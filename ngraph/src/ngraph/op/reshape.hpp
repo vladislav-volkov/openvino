@@ -89,7 +89,7 @@ namespace ngraph
 
                 void validate_and_infer_types() override;
 
-                virtual std::shared_ptr<Node>
+                std::shared_ptr<Node>
                     clone_with_new_inputs(const OutputVector& new_args) const override;
                 bool visit_attributes(AttributeVisitor& visitor) override;
 
@@ -105,7 +105,7 @@ namespace ngraph
                               const HostTensorVector& inputs) override;
 
             protected:
-                virtual void generate_adjoints(autodiff::Adjoints& adjoints,
+                void generate_adjoints(autodiff::Adjoints& adjoints,
                                                const OutputVector& deltas) override;
 
                 AxisVector m_input_order;
@@ -146,7 +146,7 @@ namespace ngraph
                 void validate_and_infer_types() override;
 
                 size_t get_version() const override { return 1; }
-                virtual std::shared_ptr<Node>
+                std::shared_ptr<Node>
                     clone_with_new_inputs(const OutputVector& new_args) const override;
 
                 bool get_special_zero() const { return m_special_zero; }
@@ -155,7 +155,7 @@ namespace ngraph
                               const HostTensorVector& inputs) override;
 
             protected:
-                virtual void generate_adjoints(autodiff::Adjoints& adjoints,
+                void generate_adjoints(autodiff::Adjoints& adjoints,
                                                const OutputVector& deltas) override;
 
             private:

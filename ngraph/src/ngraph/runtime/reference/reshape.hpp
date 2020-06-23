@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cmath>
+#include <algorithm>
 
 #include "ngraph/axis_vector.hpp"
 #include "ngraph/check.hpp"
@@ -28,6 +29,18 @@ namespace ngraph
     {
         namespace reference
         {
+            template <typename T>
+            void reshape(const T* arg,
+                         T* out,
+                         const Shape& in_shape,
+                         const Shape& out_shape)
+            {
+                size_t const src_size = shape_size(in_shape);
+                size_t const dst_size = shape_size(out_shape);
+                NGRAPH_CHECK(src_size == dst_size);
+                std::copy(arg, arg + src_size, out);
+            }
+
             template <typename T>
             void reshape(const T* arg,
                          T* out,

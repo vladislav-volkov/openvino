@@ -27,7 +27,7 @@
 #include <ngraph/pass/constant_folding.hpp>
 
 bool ngraph::pass::CommonOptimizations::run_on_function(std::shared_ptr<ngraph::Function> f) {
-    OV_ITT_SCOPED_TASK(itt::domains::IETransform, "ngraph::pass::CommonOptimizations");
+    OV_ITT_SCOPED_TASK(itt::domains::IETransform_LT, "ngraph::pass::CommonOptimizations");
 
     ngraph::pass::Manager manager;
 

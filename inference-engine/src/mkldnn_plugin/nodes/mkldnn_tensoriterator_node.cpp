@@ -244,4 +244,4 @@ void MKLDNNTensorIteratorNode::execute(mkldnn::stream strm) {
 bool MKLDNNTensorIteratorNode::created() const {
     return getType() == TensorIterator;
 }
-REG_MKLDNN_PRIM_FOR(MKLDNNTensorIteratorNode, TensorIterator);
+REG_MKLDNN_PRIM_FOR(MKLDNNTensorIteratorNode, MKLDNNPlugin::TensorIterator);

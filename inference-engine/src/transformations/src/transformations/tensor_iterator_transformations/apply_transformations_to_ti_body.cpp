@@ -4,6 +4,7 @@
 
 #include "transformations/tensor_iterator_transformations/apply_transformations_to_ti_body.hpp"
 #include "transformations/utils/utils.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 
@@ -14,6 +15,8 @@ ngraph::pass::ApplyTransformationsToTIBody::ApplyTransformationsToTIBody(ngraph:
     auto tensor_iterator = ngraph::pattern::wrap_type<ngraph::opset4::TensorIterator>();
 
     ngraph::matcher_pass_callback callback = [this, &manager](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(itt::domains::IETransform_LT, "ngraph::pass::ApplyTransformationsToTIBody");
+
         auto ti = std::dynamic_pointer_cast<ngraph::opset4::TensorIterator>(m.get_match_root());
         if (!ti) {
             return false;

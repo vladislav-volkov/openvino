@@ -94,7 +94,11 @@ void MKLDNNGraph::CreateGraph(const NET &net, const MKLDNNExtensionManager::Ptr&
     // disable caching if graph was created only once
     weightsCache = config.streamExecutorConfig._streams != 1 ? w_cache : nullptr;
 
-    Replicate(net, extMgr);
+    {
+        OV_ITT_SCOPED_TASK(MKLDNNPlugin::itt::domains::MKLDNN_LT, "Replicate");
+        Replicate(net, extMgr);
+    }
+
     InitGraph();
     status = Ready;
 }
@@ -133,7 +137,7 @@ void MKLDNNGraph::Replicate(const TensorIterator::Body &subgraph, const MKLDNNEx
     for (const auto layer : NetPass::TIBodySortTopologically(subgraph)) {
         CNNLayerPtr _layer = layer;
 
-        const MKLDNNNodePtr node(MKLDNNNode::CreateNode(_layer, getEngine(), extMgr, weightsCache));
+        const MKLDNNNodePtr node(MKLDNNNode::factory().create(_layer, getEngine(), extMgr, weightsCache));
         graphNodes.push_back(node);
         layer2node[layer] = node;
 
@@ -162,7 +166,7 @@ void MKLDNNGraph::Replicate(const TensorIterator::Body &subgraph, const MKLDNNEx
         CNNLayerPtr layer(new CNNLayer({"out_" + output->getName(), "Output", output->getTensorDesc().getPrecision()}));
         layer->insData.push_back(output);
 
-        const MKLDNNNodePtr node(MKLDNNNode::CreateNode(layer, getEngine(), extMgr, weightsCache));
+        const MKLDNNNodePtr node(MKLDNNNode::factory().create(layer, getEngine(), extMgr, weightsCache));
 
         MKLDNNEdgePtr edge(new MKLDNNEdge(parent_node, node, _parent_port(output), 0));
         node->addEdge(edge);
@@ -182,7 +186,7 @@ void MKLDNNGraph::Replicate(const TensorIterator::Body &subgraph, const MKLDNNEx
         CNNLayerPtr layer(new CNNLayer({"stub_" + parent_layer->name, "Output", to_stub_data->getTensorDesc().getPrecision()}));
         layer->insData.push_back(to_stub_data);
 
-        const MKLDNNNodePtr node(MKLDNNNode::CreateNode(layer, getEngine(), extMgr, weightsCache));
+        const MKLDNNNodePtr node(MKLDNNNode::factory().create(layer, getEngine(), extMgr, weightsCache));
 
         MKLDNNEdgePtr edge(new MKLDNNEdge(parent_node, node, _parent_port(to_stub_data), 0));
         node->addEdge(edge);
@@ -197,7 +201,7 @@ void MKLDNNGraph::Replicate(const TensorIterator::Body &subgraph, const MKLDNNEx
         CNNLayerPtr layer(new CNNLayer({"in_" + input->getName(), "Input", input->getTensorDesc().getPrecision()}));
         layer->outData.push_back(input);
 
-        const MKLDNNNodePtr node(MKLDNNNode::CreateNode(layer, getEngine(), extMgr, weightsCache));
+        const MKLDNNNodePtr node(MKLDNNNode::factory().create(layer, getEngine(), extMgr, weightsCache));
 
         for (auto p : getInputTo(input)) {
             auto consumer = p.second;
@@ -251,7 +255,7 @@ void MKLDNNGraph::Replicate(const ICNNNetwork &network, const MKLDNNExtensionMan
             _layer->outData = layer->outData;
         }
 
-        const MKLDNNNodePtr node(MKLDNNNode::CreateNode(_layer, getEngine(), extMgr, weightsCache));
+        const MKLDNNNodePtr node(MKLDNNNode::factory().create(_layer, getEngine(), extMgr, weightsCache));
         graphNodes.push_back(node);
         layer2node[layer] = node;
 
@@ -289,7 +293,7 @@ void MKLDNNGraph::Replicate(const ICNNNetwork &network, const MKLDNNExtensionMan
         CNNLayerPtr layer(new CNNLayer({"out_" + output.first, "Output", data->getTensorDesc().getPrecision()}));
         layer->insData.push_back(data);
 
-        const MKLDNNNodePtr node(MKLDNNNode::CreateNode(layer, getEngine(), extMgr, weightsCache));
+        const MKLDNNNodePtr node(MKLDNNNode::factory().create(layer, getEngine(), extMgr, weightsCache));
 
         MKLDNNEdgePtr edge(new MKLDNNEdge(parent_node, node, _parent_port(data), 0));
         node->addEdge(edge);
@@ -309,7 +313,7 @@ void MKLDNNGraph::Replicate(const ICNNNetwork &network, const MKLDNNExtensionMan
         CNNLayerPtr layer(new CNNLayer({"stub_" + parent_layer->name, "Output", to_stub_data->getTensorDesc().getPrecision()}));
         layer->insData.push_back(to_stub_data);
 
-        const MKLDNNNodePtr node(MKLDNNNode::CreateNode(layer, getEngine(), extMgr, weightsCache));
+        const MKLDNNNodePtr node(MKLDNNNode::factory().create(layer, getEngine(), extMgr, weightsCache));
 
         MKLDNNEdgePtr edge(new MKLDNNEdge(parent_node, node, _parent_port(to_stub_data), 0));
         node->addEdge(edge);
@@ -340,25 +344,36 @@ void MKLDNNGraph::Replicate(const ICNNNetwork &network, const MKLDNNExtensionMan
 void MKLDNNGraph::InitGraph() {
     MKLDNNGraphOptimizer optimizer;
 
+    OV_ITT_TASK_CHAIN(taskChain, MKLDNNPlugin::itt::domains::MKLDNN_LT, "InitGraph", "InitNodes");
     SortTopologically();
     InitNodes();
+
+    OV_ITT_TASK_NEXT(taskChain, "ApplyCommonGraphOptimizations");
     optimizer.ApplyCommonGraphOptimizations(*this);
     SortTopologically();
 
+    OV_ITT_TASK_SKIP(taskChain);
     InitDescriptors();
 
     for (auto &node : graphNodes) {
+        OV_ITT_TASK_NEXT(taskChain, node->profiling.initOptimalPrimitiveDescriptor);
         node->initOptimalPrimitiveDescriptor();
     }
+
+    OV_ITT_TASK_NEXT(taskChain, "InitEdges");
     InitEdges();
 
+    OV_ITT_TASK_NEXT(taskChain, "ApplyImplSpecificGraphOptimizations");
     optimizer.ApplyImplSpecificGraphOptimizations(*this);
-
     SortTopologically();
 
+    OV_ITT_TASK_NEXT(taskChain, "Allocate");
     Allocate();
 
+    OV_ITT_TASK_SKIP(taskChain);
     CreatePrimitives();
+
+    OV_ITT_TASK_NEXT(taskChain, "RemainingActions");
 
     // Do it before cleanup. Because it will lose original layers information
     for (auto &graphNode : graphNodes) {
@@ -422,6 +437,8 @@ void MKLDNNGraph::InitNodes() {
 }
 
 void MKLDNNGraph::InitDescriptors() {
+    OV_ITT_TASK_CHAIN(taskChain, MKLDNNPlugin::itt::domains::MKLDNN_LT, "InitDescriptors", "Prepare");
+
     for (auto &node : graphNodes) {
 #if defined (COMPILED_CPU_MKLDNN_INPUT_NODE)
         if (node->getType() == Input && _meanImages.find(node->getName()) != _meanImages.end()) {
@@ -430,13 +447,18 @@ void MKLDNNGraph::InitDescriptors() {
                 inputNode->withMeanImage();
         }
 #endif
+        OV_ITT_TASK_NEXT(taskChain, node->profiling.getSupportedDescriptors);
         node->getSupportedDescriptors();
 
+        OV_ITT_TASK_NEXT(taskChain, node->profiling.initSupportedPrimitiveDescriptors);
         node->initSupportedPrimitiveDescriptors();
+
+        OV_ITT_TASK_NEXT(taskChain, node->profiling.filterSupportedPrimitiveDescriptors);
         node->filterSupportedPrimitiveDescriptors();
     }
 
     for (auto &node : graphNodes) {
+        OV_ITT_TASK_NEXT(taskChain, node->profiling.selectOptimalPrimitiveDescriptor);
         node->selectOptimalPrimitiveDescriptor();
     }
 }
@@ -697,6 +719,7 @@ void MKLDNNGraph::Allocate() {
 void MKLDNNGraph::CreatePrimitives() {
     OV_ITT_SCOPED_TASK(itt::domains::MKLDNNPlugin, "MKLDNNGraph::CreatePrimitives");
     for (auto& node : graphNodes) {
+        OV_ITT_SCOPED_TASK(itt::domains::MKLDNN_LT, node->profiling.createPrimitive);
         node->createPrimitive();
     }
 }
@@ -794,7 +817,7 @@ void MKLDNNGraph::Infer(int batch) {
         ENABLE_DUMP(do_before(DUMP_DIR, graphNodes[i]));
 
         if (!graphNodes[i]->isConstant()) {
-            OV_ITT_SCOPED_TASK(itt::domains::MKLDNNPlugin, graphNodes[i]->profilingTask);
+            OV_ITT_SCOPED_TASK(itt::domains::MKLDNNPlugin, graphNodes[i]->profiling.task);
             graphNodes[i]->execute(stream);
         }
 

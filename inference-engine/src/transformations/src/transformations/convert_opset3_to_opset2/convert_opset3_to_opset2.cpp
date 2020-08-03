@@ -19,7 +19,7 @@
 #include <ngraph/pass/manager.hpp>
 
 bool ngraph::pass::ConvertOpSet3ToOpSet2::run_on_function(std::shared_ptr<ngraph::Function> f) {
-    OV_ITT_SCOPED_TASK(itt::domains::IETransform, "ngraph::pass::ConvertOpSet3ToOpSet2");
+    OV_ITT_SCOPED_TASK(itt::domains::IETransform_LT, "ngraph::pass::ConvertOpSet3ToOpSet2");
 
     ngraph::pass::Manager manager;
 

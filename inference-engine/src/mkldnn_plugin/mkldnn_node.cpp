@@ -4,13 +4,12 @@
 
 #include "mkldnn_node.h"
 #include "mkldnn_extension_mngr.h"
+#include "mkldnn_itt.h"
 
-#include "caseless.hpp"
 #include <vector>
 #include <string>
 #include <limits>
 #include <cstdint>
-#include <unordered_map>
 
 #include <nodes/mkldnn_batchnorm_node.h>
 #include <nodes/mkldnn_concat_node.h>
@@ -150,20 +149,17 @@ Type TypeFromName(const std::string type) {
 
 }  //  namespace MKLDNNPlugin
 
-std::shared_ptr<MKLDNNNodesHolder> MKLDNNNode::GetNodesHolder() {
-    static std::shared_ptr<MKLDNNNodesHolder> localHolder = std::make_shared<MKLDNNNodesHolder>();
-    return localHolder;
-}
-
-void MKLDNNNode::AddNode(const std::string& name, CreatorByLayerFunction factory) {
-    GetNodesHolder()->nodes[name] = factory;
+MKLDNNNode::Factory & MKLDNNNode::factory() {
+    static Factory factoryInstance;
+    return factoryInstance;
 }
 
 MKLDNNNode::MKLDNNNode(const InferenceEngine::CNNLayerPtr& layer, const mkldnn::engine& eng,
         MKLDNNWeightsSharing::Ptr &w_cache)
         : selectedPrimitiveDescriptorIndex(-1), permanent(false), temporary(false), constant(ConstantType::Unknown),
           weightCache(w_cache), cnnLayer(layer), engine(eng), name(layer->name), typeStr(layer->type),
-          type(TypeFromName(layer->type)), profilingTask(itt::handle(name)) {
+          type(TypeFromName(layer->type)) {
+    createPerfCounters();
     if (!layer->outData.empty()) {
         for (const auto& outData : layer->outData) {
             outDims.emplace_back(outData->getDims());
@@ -212,6 +208,16 @@ MKLDNNNode::MKLDNNNode(const InferenceEngine::CNNLayerPtr& layer, const mkldnn::
     }
 }
 
+void MKLDNNNode::createPerfCounters() {
+    profiling.task = openvino::itt::handle(name);
+    profiling.getSupportedDescriptors = openvino::itt::handle<Tag<MKLDNNNode, 0>>("MKLDNNNode::getSupportedDescriptors");
+    profiling.initSupportedPrimitiveDescriptors = openvino::itt::handle<Tag<MKLDNNNode, 1>>("MKLDNNNode::initSupportedPrimitiveDescriptors");
+    profiling.filterSupportedPrimitiveDescriptors = openvino::itt::handle<Tag<MKLDNNNode, 2>>("MKLDNNNode::filterSupportedPrimitiveDescriptors");
+    profiling.selectOptimalPrimitiveDescriptor = openvino::itt::handle<Tag<MKLDNNNode, 3>>("MKLDNNNode::selectOptimalPrimitiveDescriptor");
+    profiling.createPrimitive = openvino::itt::handle<Tag<MKLDNNNode, 4>>("MKLDNNNode::createPrimitive");
+    profiling.initOptimalPrimitiveDescriptor = openvino::itt::handle<Tag<MKLDNNNode, 5>>("MKLDNNNode::initOptimalPrimitiveDescriptor");
+}
+
 void MKLDNNNode::addEdge(const MKLDNNEdgeWeakPtr& edge) {
     auto edgePtr = edge.lock();
     if (!edgePtr)
@@ -258,41 +264,6 @@ void MKLDNNNode::remove() {
     for (const auto &childEdge : child_edges) {
         removeEdge(childEdge);
     }
-}
-
-MKLDNNNode* MKLDNNNode::CreateNode(const InferenceEngine::CNNLayerPtr& layer, const mkldnn::engine& eng,
-                                   const MKLDNNExtensionManager::Ptr& extMgr, MKLDNNWeightsSharing::Ptr &w_cache) {
-    MKLDNNNode *newNode = nullptr;
-    auto nodesHolder = GetNodesHolder();
-
-    if (nodesHolder->nodes.find("Generic") != nodesHolder->nodes.end()) {
-        std::unique_ptr<MKLDNNNode> ol(nodesHolder->nodes["Generic"](layer, eng, w_cache));
-        if (ol != nullptr && ol->created(extMgr))
-            newNode = ol.release();
-    }
-    if (newNode == nullptr) {
-        for (auto maker : nodesHolder->nodes) {
-            std::unique_ptr<MKLDNNNode> ol(maker.second(layer, eng, w_cache));
-            if (ol != nullptr && ol->created(extMgr)) {
-                newNode = ol.release();
-                break;
-            }
-        }
-    }
-
-    //  WA-start : TI node requires all attributes to construct internal subgpath
-    //             including extManager, socket and mkldnn::eng.
-#if defined (COMPILED_CPU_MKLDNN_TENSORITERATOR_NODE)
-    MKLDNNTensorIteratorNode *ti = dynamic_cast<MKLDNNTensorIteratorNode*>(newNode);
-    if (ti != nullptr)
-        ti->setExtManager(extMgr);
-#endif
-    //  WA-end
-
-    if (!newNode)
-        THROW_IE_EXCEPTION << "Unsupported primitive of type: " << layer->type << " name: " << layer->name;
-
-    return newNode;
 }
 
 bool MKLDNNNode::isEdgesEmpty(const std::vector<MKLDNNEdgeWeakPtr>& edges) const {
@@ -1156,4 +1127,46 @@ Layout MKLDNNNode::getWeightsLayoutByDims(SizeVector dims, bool isGrouped) {
 
 void MKLDNNNode::appendPostOps(mkldnn::post_ops& ops) {
     THROW_IE_EXCEPTION << "Fusing of " << this->getType() << " operation is not implemented";
+}
+
+
+MKLDNNNode* MKLDNNNode::Factory::create(const InferenceEngine::CNNLayerPtr& layer, const mkldnn::engine& eng,
+                                        const MKLDNNExtensionManager::Ptr& extMgr, MKLDNNWeightsSharing::Ptr &w_cache) {
+    MKLDNNNode *newNode = nullptr;
+
+    auto builder = builders.find(Generic);
+
+    if (builder != builders.end()) {
+        std::unique_ptr<MKLDNNNode> ol(builder->second(layer, eng, w_cache));
+        if (ol != nullptr && ol->created(extMgr))
+            newNode = ol.release();
+    }
+
+    if (newNode == nullptr) {
+        builder = builders.find(TypeFromName(layer->type));
+
+        if (builder != builders.end()) {
+            std::unique_ptr<MKLDNNNode> ol(builder->second(layer, eng, w_cache));
+            if (ol != nullptr && ol->created(extMgr))
+                newNode = ol.release();
+        }
+    }
+
+    //  WA-start : TI node requires all attributes to construct internal subgpath
+    //             including extManager, socket and mkldnn::eng.
+#if defined (COMPILED_CPU_MKLDNN_TENSORITERATOR_NODE)
+    MKLDNNTensorIteratorNode *ti = dynamic_cast<MKLDNNTensorIteratorNode*>(newNode);
+    if (ti != nullptr)
+        ti->setExtManager(extMgr);
+#endif
+    //  WA-end
+
+    if (!newNode)
+        THROW_IE_EXCEPTION << "Unsupported primitive of type: " << layer->type << " name: " << layer->name;
+
+    return newNode;
+}
+
+void MKLDNNNode::Factory::registerNode(Type type, builder_t builder) {
+    builders[type] = builder;
 }

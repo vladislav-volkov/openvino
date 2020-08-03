@@ -19,6 +19,8 @@
 #include "cpp_interfaces/base/ie_executable_network_base.hpp"
 #include "cpp_interfaces/impl/ie_executable_network_internal.hpp"
 #include "cpp_interfaces/interface/ie_iplugin_internal.hpp"
+#include "cpp_interfaces/plugin_itt.hpp"
+
 
 using namespace InferenceEngine;
 using namespace InferenceEngine::details;
@@ -147,11 +149,15 @@ private:
     ExecutableNetwork LoadNetworkImplPrivate(const ICNNNetwork& network,
                                              const std::map<std::string, std::string>& config,
                                              RemoteContext::Ptr context = nullptr) {
+        OV_ITT_TASK_CHAIN(taskChain, itt::domains::Plugin_LT, "InferencePluginInternal::LoadNetworkImplPrivate", "GetInputsAndOutputs");
+
         InputsDataMap networkInputs, networkInputsCloned;
         OutputsDataMap networkOutputs, networkOutputsCloned;
         network.getInputsInfo(networkInputs);
         network.getOutputsInfo(networkOutputs);
         copyInputOutputInfo(networkInputs, networkOutputs, networkInputsCloned, networkOutputsCloned);
+
+        OV_ITT_TASK_SKIP(taskChain);
 
         ExecutableNetworkInternal::Ptr impl;
         if (nullptr == context) {
@@ -159,6 +165,8 @@ private:
         } else {
             impl = LoadExeNetworkImpl(network, context, config);
         }
+
+        OV_ITT_TASK_NEXT(taskChain, "SetInputsAndOutputs");
 
         impl->setNetworkInputs(networkInputsCloned);
         impl->setNetworkOutputs(networkOutputsCloned);

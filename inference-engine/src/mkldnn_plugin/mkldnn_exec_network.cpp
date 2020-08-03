@@ -49,9 +49,13 @@ MKLDNNExecNetwork::MKLDNNExecNetwork(const InferenceEngine::ICNNNetwork &network
     OV_ITT_SCOPED_TASK(itt::domains::MKLDNNPlugin, "MKLDNNExecNetwork::MKLDNNExecNetwork");
 
     // we are cloning network if we have statistics and we can transform network.
-    _clonedNetwork = cloneNet(network);
+    {
+        OV_ITT_SCOPED_TASK(MKLDNNPlugin::itt::domains::MKLDNN_LT, "cloneNet_IE2IE");
+        _clonedNetwork = cloneNet(network);
+    }
 
     if (_cfg.lpTransformsMode == Config::LPTransformsMode::On) {
+        OV_ITT_SCOPED_TASK(MKLDNNPlugin::itt::domains::MKLDNN_LT, "LPTransformation");
         auto params = LayerTransformation::Params(true,  // updatePrecisions
                                                     true,  // quantizeOutputs
                                                     true,  // weightsToConst
@@ -95,7 +99,10 @@ MKLDNNExecNetwork::MKLDNNExecNetwork(const InferenceEngine::ICNNNetwork &network
         }
     }
 
-    MKLDNNGraph::ApplyUnrollPasses(static_cast<ICNNNetwork&>(*_clonedNetwork));
+    {
+        OV_ITT_SCOPED_TASK(MKLDNNPlugin::itt::domains::MKLDNN_LT, "UnrollPasses");
+        MKLDNNGraph::ApplyUnrollPasses(static_cast<ICNNNetwork&>(*_clonedNetwork));
+    }
 
     if (_cfg.enableDynamicBatch) {
         // check topology for applicability
@@ -120,9 +127,15 @@ MKLDNNExecNetwork::MKLDNNExecNetwork(const InferenceEngine::ICNNNetwork &network
     }
 
     _graphs = decltype(_graphs){[&] {
+        details::CNNNetworkImplPtr localNetwork;
+
         // TODO: Remove `cloneNet` to `localNetwork` when `MKLDNNGraph::CreateGraph`
         //       is fixed and does not change content of network passed (CVS-26420)
-        auto localNetwork = cloneNet(static_cast<ICNNNetwork&>(*_clonedNetwork));
+        {
+            OV_ITT_SCOPED_TASK(MKLDNNPlugin::itt::domains::MKLDNN_LT, "cloneNet_InsideStream");
+            localNetwork = cloneNet(static_cast<ICNNNetwork&>(*_clonedNetwork));
+        }
+
         auto graph = std::make_shared<MKLDNNGraph>();
         {
             std::unique_lock<std::mutex> lock{_cfgMutex};

@@ -3,6 +3,7 @@
 //
 
 #include "ie_ir_parser.hpp"
+#include "ie_ir_itt.hpp"
 
 #include <typeinfo>
 #include <unordered_set>
@@ -90,43 +91,48 @@ std::shared_ptr<ICNNNetwork> V10Parser::parse(const pugi::xml_node& root, std::i
     std::vector<size_t> outputs;
     std::unordered_set<std::string> opName;
 
-    // Read all layers and store their parameters in params map
-    FOREACH_CHILD(node, root.child("layers"), "layer") {
-        auto node_param = parseGenericParams(node);
-        if (opName.find(node_param.name) != opName.end())
-            THROW_IE_EXCEPTION << "Invalid IR! " << node_param.name << " name is not unique!";
-        opName.insert(node_param.name);
-        params[node_param.layerId] = {node, node_param};
-        if (node_param.type == "Result" || node_param.type == "Assign") {
-            outputs.push_back(node_param.layerId);
-        }
-    }
-
     using edge = struct { size_t fromLayerId, fromPortId, toPortId; };
     std::map<size_t, std::vector<edge>> edges;
     std::map<size_t, std::shared_ptr<ngraph::Node>> id_to_node;
 
-    // Read all edges and store them for further usage
-    FOREACH_CHILD(_ec, root.child("edges"), "edge") {
-        size_t fromLayer = GetUIntAttr(_ec, "from-layer");
-        size_t fromPort = GetUIntAttr(_ec, "from-port");
-        size_t toLayer = GetUIntAttr(_ec, "to-layer");
-        size_t toPort = GetUIntAttr(_ec, "to-port");
-        edges[toLayer].push_back({fromLayer, fromPort, toPort});
-    }
-
-    // Run DFS starting from outputs to get nodes topological order
     std::set<size_t> used;
     std::vector<size_t> order;
-    std::function<void(size_t)> dfs = [&edges, &order, &used, &dfs](const size_t id) {
-        if (used.count(id)) return;
-        used.insert(id);
-        for (auto& edge : edges[id]) {
-            dfs(edge.fromLayerId);
+
+    {
+        OV_ITT_SCOPED_TASK(itt::domains::V10Reader_RT, "ParseXML");
+
+        // Read all layers and store their parameters in params map
+        FOREACH_CHILD(node, root.child("layers"), "layer") {
+            auto node_param = parseGenericParams(node);
+            if (opName.find(node_param.name) != opName.end())
+                THROW_IE_EXCEPTION << "Invalid IR! " << node_param.name << " name is not unique!";
+            opName.insert(node_param.name);
+            params[node_param.layerId] = {node, node_param};
+            if (node_param.type == "Result" || node_param.type == "Assign") {
+                outputs.push_back(node_param.layerId);
+            }
         }
-        order.push_back(id);
-    };
-    std::for_each(outputs.begin(), outputs.end(), dfs);
+
+        // Read all edges and store them for further usage
+        FOREACH_CHILD(_ec, root.child("edges"), "edge") {
+            size_t fromLayer = GetUIntAttr(_ec, "from-layer");
+            size_t fromPort = GetUIntAttr(_ec, "from-port");
+            size_t toLayer = GetUIntAttr(_ec, "to-layer");
+            size_t toPort = GetUIntAttr(_ec, "to-port");
+            edges[toLayer].push_back({fromLayer, fromPort, toPort});
+        }
+
+        // Run DFS starting from outputs to get nodes topological order
+        std::function<void(size_t)> dfs = [&edges, &order, &used, &dfs](const size_t id) {
+            if (used.count(id)) return;
+            used.insert(id);
+            for (auto& edge : edges[id]) {
+                dfs(edge.fromLayerId);
+            }
+            order.push_back(id);
+        };
+        std::for_each(outputs.begin(), outputs.end(), dfs);
+    }
 
     ngraph::ParameterVector parameter_nodes;
     ngraph::ResultVector result_nodes;
@@ -134,66 +140,80 @@ std::shared_ptr<ICNNNetwork> V10Parser::parse(const pugi::xml_node& root, std::i
     std::vector<std::shared_ptr<ngraph::op::Assign>> assign_nodes;
     std::map<std::string, std::shared_ptr<ngraph::Node>> variable_id_to_read_value;
 
-    //  Following topological order create nGraph operations
-    for (auto& layer_id : order) {
-        auto& p = params[layer_id];
-        ngraph::OutputVector inputs(edges[layer_id].size());
-        for (auto& e : edges[layer_id]) {
-            auto input_node = id_to_node[e.fromLayerId];
-            if (!input_node) {
-                THROW_IE_EXCEPTION << "Attempt to access node " << e.fromLayerId << " that not in graph.";
+    {
+        OV_ITT_SCOPED_TASK(itt::domains::V10Reader_RT, "ConstructNgraphNodes");
+
+        //  Following topological order create nGraph operations
+        for (auto& layer_id : order) {
+            auto& p = params[layer_id];
+            ngraph::OutputVector inputs(edges[layer_id].size());
+            for (auto& e : edges[layer_id]) {
+                auto input_node = id_to_node[e.fromLayerId];
+                if (!input_node) {
+                    THROW_IE_EXCEPTION << "Attempt to access node " << e.fromLayerId << " that not in graph.";
+                }
+                auto& p_output = params[e.fromLayerId].params;
+                if (p.params.getRealInputPortId(e.toPortId) >= inputs.size())
+                    THROW_IE_EXCEPTION << p.params.type << " layer " << p.params.name << " with id: " << p.params.layerId
+                        << " is inconsistent!";
+                inputs[p.params.getRealInputPortId(e.toPortId)] =
+                    input_node->output(p_output.getRealOutputPortId(e.fromPortId));
             }
-            auto& p_output = params[e.fromLayerId].params;
-            if (p.params.getRealInputPortId(e.toPortId) >= inputs.size())
-                THROW_IE_EXCEPTION << p.params.type << " layer " << p.params.name << " with id: " << p.params.layerId
-                    << " is inconsistent!";
-            inputs[p.params.getRealInputPortId(e.toPortId)] =
-                input_node->output(p_output.getRealOutputPortId(e.fromPortId));
-        }
 
-        auto node = createNode(inputs, p.xml, binStream, p.params);
-        id_to_node[layer_id] = node;
+            auto node = createNode(inputs, p.xml, binStream, p.params);
+            id_to_node[layer_id] = node;
 
-        // Check that output shape after nGraph node validation the same as in IR
-        // because IR always right!
-        // Temporary disabled!
-        //        for (size_t i = 0; i < p.params.outputPorts.size(); ++i) {
-        //            if (p.params.outputPorts[i].dims != node->output(i).get_shape()) {
-        //                THROW_IE_EXCEPTION << "Shape after nGraph infer " <<
-        //                details::dumpVec(node->output(i).get_shape())
-        //                                   << " differ from IR shapes: " <<
-        //                                   details::dumpVec(p.params.outputPorts[i].dims);
-        //            }
-        //        }
+            // Check that output shape after nGraph node validation the same as in IR
+            // because IR always right!
+            // Temporary disabled!
+            //        for (size_t i = 0; i < p.params.outputPorts.size(); ++i) {
+            //            if (p.params.outputPorts[i].dims != node->output(i).get_shape()) {
+            //                THROW_IE_EXCEPTION << "Shape after nGraph infer " <<
+            //                details::dumpVec(node->output(i).get_shape())
+            //                                   << " differ from IR shapes: " <<
+            //                                   details::dumpVec(p.params.outputPorts[i].dims);
+            //            }
+            //        }
 
-        if (auto parameter_node = std::dynamic_pointer_cast<ngraph::op::Parameter>(node)) {
-            parameter_nodes.emplace_back(parameter_node);
-        }
+            if (auto parameter_node = std::dynamic_pointer_cast<ngraph::op::Parameter>(node)) {
+                parameter_nodes.emplace_back(parameter_node);
+            }
 
-        if (auto result_node = std::dynamic_pointer_cast<ngraph::op::Result>(node)) {
-            result_nodes.emplace_back(result_node);
-        }
+            if (auto result_node = std::dynamic_pointer_cast<ngraph::op::Result>(node)) {
+                result_nodes.emplace_back(result_node);
+            }
 
-        if (auto assign_node = std::dynamic_pointer_cast<ngraph::op::Assign>(node)) {
-            assign_nodes.emplace_back(assign_node);
-        }
+            if (auto assign_node = std::dynamic_pointer_cast<ngraph::op::Assign>(node)) {
+                assign_nodes.emplace_back(assign_node);
+            }
 
-        if (auto read_value_node = std::dynamic_pointer_cast<ngraph::op::ReadValue>(node)) {
-            variable_id_to_read_value[read_value_node->get_variable_id()] = read_value_node;
-        }
-        allNodes.emplace_back(node);
-    }
-
-    ::ngraph::op::GenericIE::DisableReshape noReshape(allNodes);
-    auto function = std::make_shared<ngraph::Function>(result_nodes, parameter_nodes, GetStrAttr(root, "name", ""));
-    if (!result_nodes.empty()) {
-        for (const auto& assign : assign_nodes) {
-            assign->add_control_dependency(variable_id_to_read_value.at(assign->get_variable_id()));
-            // often Assign node is a leaf of the graph, we add control_dependency for one of the results
-            // to make Assign node visible for traversals get_ops(), get_ordered_ops()
-            result_nodes[0]->add_control_dependency(assign);
+            if (auto read_value_node = std::dynamic_pointer_cast<ngraph::op::ReadValue>(node)) {
+                variable_id_to_read_value[read_value_node->get_variable_id()] = read_value_node;
+            }
+            allNodes.emplace_back(node);
         }
     }
+
+    std::shared_ptr<ngraph::Function> function;
+
+    {
+        OV_ITT_SCOPED_TASK(itt::domains::V10Reader_RT, "ConstructNgraphFunction");
+
+        ::ngraph::op::GenericIE::DisableReshape noReshape(allNodes);
+
+        function = std::make_shared<ngraph::Function>(result_nodes, parameter_nodes, GetStrAttr(root, "name", ""));
+        if (!result_nodes.empty()) {
+            for (const auto& assign : assign_nodes) {
+                assign->add_control_dependency(variable_id_to_read_value.at(assign->get_variable_id()));
+                // often Assign node is a leaf of the graph, we add control_dependency for one of the results
+                // to make Assign node visible for traversals get_ops(), get_ordered_ops()
+                result_nodes[0]->add_control_dependency(assign);
+            }
+        }
+    }
+
+    OV_ITT_SCOPED_TASK(itt::domains::V10Reader_RT, "ConstructCNNNetwork");
+
     CNNNetwork net(function);
     parsePreProcess(net, root, binStream);
     return net;

@@ -28,6 +28,7 @@ namespace pass {
 namespace itt {
 namespace domains {
     OV_ITT_DOMAIN(IETransform);
+    OV_ITT_DOMAIN(IETransform_LT);
 }
 }
 }

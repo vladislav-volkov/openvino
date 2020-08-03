@@ -60,7 +60,7 @@
 #include <vector>
 
 bool ngraph::pass::ConvertOpSet1ToLegacy::run_on_function(std::shared_ptr<ngraph::Function> f) {
-    OV_ITT_SCOPED_TASK(itt::domains::IETransform, "ngraph::pass::ConvertOpSet1ToLegacy");
+    OV_ITT_SCOPED_TASK(itt::domains::IETransform_LT, "ngraph::pass::ConvertOpSet1ToLegacy");
 
     ngraph::pass::Manager manager;
     std::vector<std::shared_ptr<ngraph::pass::PassBase> > transforms;

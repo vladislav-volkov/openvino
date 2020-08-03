@@ -35,6 +35,8 @@ struct Parsed {
 
 template <typename T = Parameter>
 Parsed<T> parseDeviceNameIntoConfig(const std::string& deviceName, const std::map<std::string, T>& config = {}) {
+    OV_ITT_SCOPED_TASK(itt::domains::IE_LT, "parseDeviceNameIntoConfig");
+
     auto config_ = config;
     auto deviceName_ = deviceName;
     if (deviceName_.find("HETERO:") == 0) {
@@ -331,6 +333,8 @@ public:
      * @return Reference to a CPP plugin wrapper
      */
     InferencePlugin GetCPPPluginByName(const std::string& deviceName) const {
+        OV_ITT_SCOPED_TASK(itt::domains::IE_LT, "Core::Impl::GetCPPPluginByName");
+
         std::lock_guard<std::mutex> lock(pluginsMutex);
 
         auto it = pluginRegistry.find(deviceName);

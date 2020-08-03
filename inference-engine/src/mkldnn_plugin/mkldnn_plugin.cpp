@@ -62,6 +62,8 @@ Engine::~Engine() {
 static void Transformation(ICNNNetwork::Ptr& clonedNetwork) {
     OV_ITT_SCOPED_TASK(MKLDNNPlugin::itt::domains::MKLDNNPlugin, "Transformation");
 
+    OV_ITT_TASK_CHAIN(taskChain, MKLDNNPlugin::itt::domains::MKLDNN_LT, "Transformation", "Prepare");
+
     const auto transformations_callback = [](const std::shared_ptr<const ::ngraph::Node> &node) -> bool {
         // DepthToSpace node implementation supports only equal input/output tensors with rank <= 5
         if (auto dtsOp = std::dynamic_pointer_cast<const ::ngraph::opset3::DepthToSpace>(node)) {
@@ -87,14 +89,8 @@ static void Transformation(ICNNNetwork::Ptr& clonedNetwork) {
                std::dynamic_pointer_cast<const ngraph::opset4::SoftPlus>(node) ||
                std::dynamic_pointer_cast<const ngraph::opset4::Pad>(node);
     };
-    auto nGraphFunc = clonedNetwork->getFunction();
-    // Disable shape inference (WA for generic operations)
-    ngraph::op::GenericIE::DisableReshape noReshape(nGraphFunc);
 
-    ngraph::pass::Manager manager;
-    manager.register_pass<ngraph::pass::CommonOptimizations>();
-    manager.register_pass<ngraph::pass::ConvertOpSet3ToOpSet2>();
-    manager.register_pass<ngraph::pass::ConvertOpSet2ToOpSet1>();
+    auto nGraphFunc = clonedNetwork->getFunction();
 
     std::vector<std::pair<ngraph::element::Type, ngraph::element::Type>> convert_precision_list {
             {ngraph::element::i64, ngraph::element::i32},
@@ -105,6 +101,16 @@ static void Transformation(ICNNNetwork::Ptr& clonedNetwork) {
             {ngraph::element::boolean, ngraph::element::u8},
     };
 
+    OV_ITT_TASK_NEXT(taskChain, "RegisterPass");
+
+    // Disable shape inference (WA for generic operations)
+    ngraph::op::GenericIE::DisableReshape noReshape(nGraphFunc);
+
+    ngraph::pass::Manager manager;
+    manager.register_pass<ngraph::pass::CommonOptimizations>();
+    manager.register_pass<ngraph::pass::ConvertOpSet3ToOpSet2>();
+    manager.register_pass<ngraph::pass::ConvertOpSet2ToOpSet1>();
+
     for (auto & precision : convert_precision_list) {
         manager.register_pass<ngraph::pass::ConvertPrecision>(precision.first, precision.second);
     }
@@ -113,12 +119,18 @@ static void Transformation(ICNNNetwork::Ptr& clonedNetwork) {
     manager.register_pass<ngraph::pass::ConvertPrecision>(ngraph::element::i64, ngraph::element::i32);
 
     manager.set_callback(transformations_callback);
-    manager.run_passes(nGraphFunc);
 
     // Apply all transformations to TensorIterator body
     ngraph::pass::Manager ti_manager;
     ti_manager.register_pass<ngraph::pass::ApplyTransformationsToTIBody>(manager);
+
+    OV_ITT_TASK_SKIP(taskChain);
+
+    manager.run_passes(nGraphFunc);
+
     ti_manager.run_passes(nGraphFunc);
+
+    OV_ITT_TASK_NEXT(taskChain, "ConvertPrecision");
 
     clonedNetwork = InferenceEngine::details::convertFunctionToICNNNetwork(nGraphFunc, *clonedNetwork);
 
@@ -132,6 +144,8 @@ static void Transformation(ICNNNetwork::Ptr& clonedNetwork) {
 InferenceEngine::ExecutableNetworkInternal::Ptr
 Engine::LoadExeNetworkImpl(const InferenceEngine::ICNNNetwork &network, const std::map<std::string, std::string> &config) {
     OV_ITT_SCOPED_TASK(itt::domains::MKLDNNPlugin, "Engine::LoadExeNetworkImpl");
+
+    OV_ITT_TASK_CHAIN(taskChain, itt::domains::MKLDNN_LT, "Engine::LoadExeNetworkImpl", "getInputsInfo");
 
     // verification of supported input
     InferenceEngine::InputsDataMap _networkInputs;
@@ -150,6 +164,8 @@ Engine::LoadExeNetworkImpl(const InferenceEngine::ICNNNetwork &network, const st
         }
     }
 
+    OV_ITT_TASK_NEXT(taskChain, "readProperties");
+
     // TODO: handle input precision differently - per input and not one per network...
 
     // TODO: Clarify the behavior of SetConfig method. Skip eng_config or not?
@@ -160,14 +176,18 @@ Engine::LoadExeNetworkImpl(const InferenceEngine::ICNNNetwork &network, const st
         conf.batchLimit = static_cast<int>(network.getBatchSize());
     }
 
+    OV_ITT_TASK_NEXT(taskChain, "cloneNetwork");
     std::shared_ptr<ICNNNetwork> clonedNetwork = cloneNetwork(network);
+
     bool is_transformed = false;
     if (clonedNetwork->getFunction()) {
+        OV_ITT_TASK_SKIP(taskChain);
         Transformation(clonedNetwork);
         is_transformed = true;
     }
     auto implNetwork = std::dynamic_pointer_cast<details::CNNNetworkImpl>(clonedNetwork);
     if (implNetwork) {
+        OV_ITT_TASK_NEXT(taskChain, "IE_OLD_ConstantFolding");
         // valid for CNNNetworkImpl only, while there's no API in ICNNNetwork to change network
         ConstTransformer transformator(implNetwork.get());
         transformator.fullTrim();
@@ -180,6 +200,8 @@ Engine::LoadExeNetworkImpl(const InferenceEngine::ICNNNetwork &network, const st
             NetPass::ConvertPrecision(*implNetwork, Precision::U16, Precision::I32);
         }
     }
+
+    OV_ITT_TASK_NEXT(taskChain, "make_shared<MKLDNNExecNetwork>");
 
     return std::make_shared<MKLDNNExecNetwork>(*clonedNetwork, conf, extensionManager, weightsSharing);
 }
@@ -295,7 +317,7 @@ void Engine::QueryNetwork(const ICNNNetwork& network, const std::map<std::string
             auto layerIsSupported = [&] {
                 std::unique_ptr<MKLDNNNode> ptr;
                 try {
-                    ptr.reset(MKLDNNNode::CreateNode(*itLayer, {mkldnn::engine::kind::cpu, 0}, extensionManager, fake_w_cache));
+                    ptr.reset(MKLDNNNode::factory().create(*itLayer, {mkldnn::engine::kind::cpu, 0}, extensionManager, fake_w_cache));
                 } catch (InferenceEngine::details::InferenceEngineException&) {
                      return false;
                 }
@@ -340,7 +362,7 @@ void Engine::QueryNetwork(const ICNNNetwork& network, const std::map<std::string
             try {
                 mkldnn::engine eng(mkldnn::engine(mkldnn::engine::kind::cpu, 0));
                 // if we can create and have not thrown exception, then layer is supported
-                std::unique_ptr <MKLDNNNode>(MKLDNNNode::CreateNode(*i, eng, extensionManager, fake_w_cache));
+                std::unique_ptr <MKLDNNNode>(MKLDNNNode::factory().create(*i, eng, extensionManager, fake_w_cache));
                 res.supportedLayersMap.insert({ (*i)->name, GetName() });
             } catch (InferenceEngine::details::InferenceEngineException&) {
             }

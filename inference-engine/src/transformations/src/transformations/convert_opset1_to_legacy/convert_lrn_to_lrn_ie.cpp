@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/convert_lrn_to_lrn_ie.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -19,6 +20,8 @@ ngraph::pass::ConvertLRNToLegacyMatcher::ConvertLRNToLegacyMatcher() {
     auto lrn = std::make_shared<ngraph::opset1::LRN>(input_0, input_1, 1, 1, 1, 1);
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertLRNToLegacyMatcher");
+
         auto lrn = std::dynamic_pointer_cast<ngraph::opset1::LRN> (m.get_match_root());
         if (!lrn) {
             return false;

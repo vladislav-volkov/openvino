@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/convert_mul_add_to_scaleshift_or_power.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -184,4 +185,9 @@ void ngraph::pass::ConvertMulAddToScaleShiftOrPower::convert_mul_add_to_scaleshi
 
     auto m = std::make_shared<ngraph::pattern::Matcher>(add, "CPUFusion.MulAddToScaleShiftOrPower");
     this->add_matcher(m, callback, PassProperty::CHANGE_DYNAMIC_STATE);
+}
+
+bool ngraph::pass::ConvertMulAddToScaleShiftOrPower::run_on_function(std::shared_ptr<ngraph::Function> f) {
+    OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertMulAddToScaleShiftOrPower");
+    return GraphRewrite::run_on_function(f);
 }

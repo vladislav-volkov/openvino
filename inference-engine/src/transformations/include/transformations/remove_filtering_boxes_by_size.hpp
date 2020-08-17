@@ -25,6 +25,8 @@ public:
         remove_filtering_boxes_by_size();
     }
 
+    bool run_on_function(std::shared_ptr<ngraph::Function> f) override;
+
 private:
     void remove_filtering_boxes_by_size();
 };

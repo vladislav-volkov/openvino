@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_negative.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -15,6 +16,8 @@ ngraph::pass::ConvertNegative::ConvertNegative() {
     auto neg = ngraph::pattern::wrap_type<ngraph::opset1::Negative>();
 
     ngraph::graph_rewrite_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertNegative");
+
         auto neg = std::dynamic_pointer_cast<ngraph::opset1::Negative> (m.get_match_root());
         if (!neg) {
             return false;

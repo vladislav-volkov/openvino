@@ -3,6 +3,7 @@
 //
 
 #include "transformations/common_optimizations/conv_mul_fusion.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -23,6 +24,8 @@ ngraph::pass::ConvolutionMultiplyFusion::ConvolutionMultiplyFusion() {
     auto mul = ngraph::pattern::wrap_type<opset4::Multiply>({conv, mul_const});
 
     matcher_pass_callback callback = [conv, input, weights, mul, mul_const](pattern::Matcher & m) -> bool {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvolutionMultiplyFusion");
+
         const auto & pattern_to_output = m.get_pattern_value_map();
 
         const auto & m_weights = pattern_to_output.at(weights);
@@ -84,6 +87,8 @@ ngraph::pass::GroupConvolutionMultiplyFusion::GroupConvolutionMultiplyFusion() {
     auto mul = ngraph::pattern::wrap_type<opset4::Multiply>({conv, mul_const});
 
     matcher_pass_callback callback = [conv, input, weights, mul, mul_const](pattern::Matcher & m) -> bool {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::GroupConvolutionMultiplyFusion");
+
         const auto & pattern_to_output = m.get_pattern_value_map();
 
         const auto & m_weights = pattern_to_output.at(weights);
@@ -147,6 +152,8 @@ ngraph::pass::ConvolutionBackpropDataMultiplyFusion::ConvolutionBackpropDataMult
     auto mul = ngraph::pattern::wrap_type<opset4::Multiply>({conv, mul_const});
 
     matcher_pass_callback callback = [conv, input, weights, mul, mul_const](pattern::Matcher & m) -> bool {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvolutionBackpropDataMultiplyFusion");
+
         const auto & pattern_to_output = m.get_pattern_value_map();
 
         const auto & m_weights = pattern_to_output.at(weights);
@@ -208,6 +215,8 @@ ngraph::pass::GroupConvolutionBackpropDataMultiplyFusion::GroupConvolutionBackpr
     auto mul = ngraph::pattern::wrap_type<opset4::Multiply>({conv, mul_const});
 
     matcher_pass_callback callback = [conv, input, weights, mul, mul_const](pattern::Matcher & m) -> bool {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::GroupConvolutionBackpropDataMultiplyFusion");
+
         const auto & pattern_to_output = m.get_pattern_value_map();
 
         const auto & m_weights = pattern_to_output.at(weights);

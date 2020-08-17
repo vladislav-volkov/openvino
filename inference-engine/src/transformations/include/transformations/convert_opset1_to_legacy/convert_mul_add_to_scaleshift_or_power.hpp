@@ -25,6 +25,8 @@ public:
         convert_mul_add_to_scaleshift_or_power();
     }
 
+    bool run_on_function(std::shared_ptr<ngraph::Function> f) override;
+
 private:
     void convert_mul_add_to_scaleshift_or_power();
 };

@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/convert_normalizel2_to_normalize_ie.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -21,6 +22,8 @@ ngraph::pass::ConvertNormalizeL2WithMulToNormalizeIE::ConvertNormalizeL2WithMulT
     auto mul = std::make_shared<ngraph::opset1::Multiply> (normalize, input_1);
 
     ngraph::graph_rewrite_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertNormalizeL2WithMulToNormalizeIE");
+
         auto mul = std::dynamic_pointer_cast<ngraph::opset1::Multiply> (m.get_match_root());
         if (!mul) return false;
 
@@ -78,6 +81,8 @@ ngraph::pass::ConvertNormalizeL2ToLegacyMatcher::ConvertNormalizeL2ToLegacyMatch
     auto normalize = std::make_shared<ngraph::op::NormalizeL2>(input_0, axis, 0, ngraph::op::EpsMode::ADD);
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertNormalizeL2ToLegacyMatcher");
+
         auto normalize = std::dynamic_pointer_cast<ngraph::op::NormalizeL2> (m.get_match_root());
         if (!normalize) return false;
 

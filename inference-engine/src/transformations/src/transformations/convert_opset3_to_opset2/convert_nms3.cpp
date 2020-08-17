@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset3_to_opset2/convert_nms3.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -40,4 +41,9 @@ void ngraph::pass::ConvertNMS1ToNMS3::convert_nms1_to_nms3() {
 
     auto m = std::make_shared<ngraph::pattern::Matcher>(nms, "ConvertNMS1ToNMS3");
     this->add_matcher(m, callback, PassProperty::CHANGE_DYNAMIC_STATE);
+}
+
+bool ngraph::pass::ConvertNMS1ToNMS3::run_on_function(std::shared_ptr<ngraph::Function> f) {
+    OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertNMS1ToNMS3");
+    return GraphRewrite::run_on_function(f);
 }

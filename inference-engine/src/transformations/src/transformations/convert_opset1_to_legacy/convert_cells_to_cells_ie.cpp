@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/convert_cells_to_cells_ie.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -24,8 +25,10 @@ ngraph::pass::ConvertLSTMCellMatcher::ConvertLSTMCellMatcher() {
     };
     auto any_lstm = std::make_shared<pattern::op::Label>(element::f32, Shape{}, is_supported_lstm_cell);
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertLSTMCellMatcher");
         auto lstm_cell = std::dynamic_pointer_cast<ngraph::op::util::RNNCellBase>(m.get_match_root());
-        if (!lstm_cell) {
+
+	if (!lstm_cell) {
             return false;
         }
         auto W = std::dynamic_pointer_cast<ngraph::opset1::Constant> (lstm_cell->input_value(3).get_node_shared_ptr());
@@ -64,6 +67,8 @@ ngraph::pass::ConvertGRUCellMatcher::ConvertGRUCellMatcher() {
     auto gru_cell_ngraph = ngraph::pattern::wrap_type<ngraph::opset3::GRUCell>();
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertGRUCellMatcher");
+
         auto gru_cell = std::dynamic_pointer_cast<ngraph::opset3::GRUCell> (m.get_match_root());
         if (!gru_cell) {
             return false;
@@ -105,6 +110,8 @@ ngraph::pass::ConvertRNNCellMatcher::ConvertRNNCellMatcher() {
     auto rnn_cell_ngraph = ngraph::pattern::wrap_type<ngraph::opset3::RNNCell>();
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertRNNCellMatcher");
+
         auto rnn_cell = std::dynamic_pointer_cast<ngraph::opset3::RNNCell> (m.get_match_root());
         if (!rnn_cell) {
             return false;

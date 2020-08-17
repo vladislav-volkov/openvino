@@ -3,6 +3,7 @@
 //
 
 #include "transformations/depth_to_space_fusion.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -164,4 +165,9 @@ void ngraph::pass::DepthToSpaceFusion::depth_to_space_fusion() {
 
     auto m = std::make_shared<ngraph::pattern::Matcher>(reshape_after, "DepthToSpaceFusion");
     this->add_matcher(m, callback, PassProperty::CHANGE_DYNAMIC_STATE);
+}
+
+bool ngraph::pass::DepthToSpaceFusion::run_on_function(std::shared_ptr<ngraph::Function> f) {
+    OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::DepthToSpaceFusion");
+    return GraphRewrite::run_on_function(f);
 }

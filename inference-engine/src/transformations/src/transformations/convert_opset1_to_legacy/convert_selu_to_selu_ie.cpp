@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/convert_selu_to_selu_ie.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -20,6 +21,8 @@ ngraph::pass::ConvertSeluToSeluIEMatcher::ConvertSeluToSeluIEMatcher() {
     auto selu = std::make_shared<ngraph::opset1::Selu>(input_0, input_1, input_2);
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertSeluToSeluIEMatcher");
+
         auto selu = std::dynamic_pointer_cast<ngraph::opset1::Selu> (m.get_match_root());
         if (!selu) {
             return false;

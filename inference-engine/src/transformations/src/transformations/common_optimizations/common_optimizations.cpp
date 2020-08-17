@@ -14,7 +14,6 @@
 #include "transformations/convert_pad_to_group_conv.hpp"
 #include "transformations/remove_filtering_boxes_by_size.hpp"
 #include "transformations/init_node_info.hpp"
-#include "transformations/itt.hpp"
 #include "transformations/mish_fusion.hpp"
 #include "transformations/softplus_fusion.hpp"
 #include "transformations/softplus_to_mish_fusion.hpp"
@@ -22,12 +21,13 @@
 #include "transformations/hswish_fusion.hpp"
 #include "transformations/normalize_l2_fusion.hpp"
 #include "transformations/convert_quantize_dequantize.hpp"
+#include "transformations/itt.hpp"
 
 #include <ngraph/pass/manager.hpp>
 #include <ngraph/pass/constant_folding.hpp>
 
 bool ngraph::pass::CommonOptimizations::run_on_function(std::shared_ptr<ngraph::Function> f) {
-    OV_ITT_SCOPED_TASK(itt::domains::IETransform_LT, "ngraph::pass::CommonOptimizations");
+    OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::IETransform, "ngraph::pass::CommonOptimizations");
 
     ngraph::pass::Manager manager;
 

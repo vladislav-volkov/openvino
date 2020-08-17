@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_subtract.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -15,6 +16,8 @@ ngraph::pass::ConvertSubtract::ConvertSubtract() {
     auto sub = ngraph::pattern::wrap_type<ngraph::opset1::Subtract>();
 
     ngraph::graph_rewrite_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertSubtract");
+
         auto sub = std::dynamic_pointer_cast<ngraph::opset1::Subtract> (m.get_match_root());
         if (!sub) {
             return false;

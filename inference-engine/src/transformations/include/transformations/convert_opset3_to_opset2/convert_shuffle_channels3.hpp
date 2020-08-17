@@ -25,6 +25,8 @@ public:
         convert_shuffle_channels3();
     }
 
+    bool run_on_function(std::shared_ptr<ngraph::Function> f) override;
+
 private:
     void convert_shuffle_channels3();
 };

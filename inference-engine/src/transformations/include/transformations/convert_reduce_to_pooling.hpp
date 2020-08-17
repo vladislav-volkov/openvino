@@ -16,7 +16,7 @@
 #include <ngraph/validation_util.hpp>
 #include <ngraph/rt_info.hpp>
 #include <ngraph/pattern/op/wrap_type.hpp>
-
+#include "itt.hpp"
 
 namespace ngraph {
 namespace pass {
@@ -71,6 +71,8 @@ public:
 template <class T>
 ngraph::matcher_pass_callback ConvertReduceBase::convert_reduce_to_pooling() {
     return [&](ngraph::pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertReduce");
+
         auto reduce = std::dynamic_pointer_cast<T>(m.get_match_root());
 
         if (!reduce || m_transformation_callback(reduce)) {

@@ -79,7 +79,8 @@ Function::Function(const std::shared_ptr<Node>& result,
 
 void Function::validate_nodes_and_infer_types()
 {
-    OV_ITT_SCOPED_TASK(itt::domains::nGraph_LT, "Function::validate_nodes_and_infer_types");
+    OV_ITT_SCOPED_TASK(ngraph::itt::domains::nGraphPass_LT,
+                       "Function::validate_nodes_and_infer_types");
 
     for (auto& node : get_ordered_ops())
     {

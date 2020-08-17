@@ -6,6 +6,7 @@
 #include <ngraph/opsets/opset2.hpp>
 #include <transformations/convert_gelu.hpp>
 #include <transformations/utils/utils.hpp>
+#include <transformations/itt.hpp>
 
 #include <ngraph/ngraph.hpp>
 #include <ngraph/rt_info.hpp>
@@ -37,4 +38,9 @@ void ngraph::pass::ConvertGELU::convert_gelu() {
 
     auto m = std::make_shared<ngraph::pattern::Matcher>(gelu, "ConvertGELU");
     this->add_matcher(m, callback, PassProperty::CHANGE_DYNAMIC_STATE);
+}
+
+bool ngraph::pass::ConvertGELU::run_on_function(std::shared_ptr<ngraph::Function> f) {
+    OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertGELU");
+    return GraphRewrite::run_on_function(f);
 }

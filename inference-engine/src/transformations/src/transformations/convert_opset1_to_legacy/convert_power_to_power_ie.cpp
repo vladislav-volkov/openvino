@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/convert_power_to_power_ie.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -20,6 +21,8 @@ ngraph::pass::ConvertPowerToPowerIEMatcher::ConvertPowerToPowerIEMatcher() {
 
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertPowerToPowerIEMatcher");
+
         auto power = std::dynamic_pointer_cast<ngraph::opset1::Power> (m.get_match_root());
         if (!power) {
             return false;

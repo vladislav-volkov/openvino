@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/reshape_1d_ops.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -104,8 +105,11 @@ std::shared_ptr<Node> convert(const Output<Node> & data, std::shared_ptr<opset1:
                                              node->get_auto_pad());
 }
 
-matcher_pass_callback get_callback() {
-    return [](pattern::Matcher& m) {
+template <class Reshape>
+matcher_pass_callback get_callback(const char *name) {
+    return [name](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, name);
+
         auto node = m.get_match_root();
         if (!node || node->input(0).get_partial_shape().rank().get_length() != 3) {
             return false;
@@ -150,17 +154,17 @@ matcher_pass_callback get_callback() {
 ngraph::pass::Reshape1DConvolution::Reshape1DConvolution() {
     auto conv = ngraph::pattern::wrap_type<op::ConvolutionIE>();
     auto m = std::make_shared<ngraph::pattern::Matcher>(conv, "Reshape1DConvolution");
-    this->register_matcher(m, get_callback());
+    this->register_matcher(m, get_callback<Reshape1DConvolution>("ngraph::pass::Reshape1DConvolution"));
 }
 
 ngraph::pass::Reshape1DAvgPool::Reshape1DAvgPool() {
     auto pool = ngraph::pattern::wrap_type<opset1::AvgPool>();
     auto m = std::make_shared<ngraph::pattern::Matcher>(pool, "Reshape1DAvgPool");
-    this->register_matcher(m, get_callback());
+    this->register_matcher(m, get_callback<Reshape1DAvgPool>("ngraph::pass::Reshape1DAvgPool"));
 }
 
 ngraph::pass::Reshape1DMaxPool::Reshape1DMaxPool() {
     auto pool = ngraph::pattern::wrap_type<opset1::MaxPool>();
     auto m = std::make_shared<ngraph::pattern::Matcher>(pool, "Reshape1DMaxPool");
-    this->register_matcher(m, get_callback());
+    this->register_matcher(m, get_callback<Reshape1DMaxPool>("ngraph::pass::Reshape1DMaxPool"));
 }

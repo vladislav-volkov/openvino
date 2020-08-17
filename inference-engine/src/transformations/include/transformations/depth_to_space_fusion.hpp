@@ -47,6 +47,8 @@ public:
         depth_to_space_fusion();
     }
 
+    bool run_on_function(std::shared_ptr<ngraph::Function> f) override;
+
 private:
     void depth_to_space_fusion();
 };

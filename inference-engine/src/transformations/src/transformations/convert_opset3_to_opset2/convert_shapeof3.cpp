@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset3_to_opset2/convert_shapeof3.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -42,4 +43,9 @@ void ngraph::pass::ConvertShapeOf3::convert_shapeof3() {
 
     auto m = std::make_shared<ngraph::pattern::Matcher>(shapeof, "ConvertShapeOf3");
     this->add_matcher(m, callback, PassProperty::CHANGE_DYNAMIC_STATE);
+}
+
+bool ngraph::pass::ConvertShapeOf3::run_on_function(std::shared_ptr<ngraph::Function> f) {
+    OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertShapeOf3");
+    return GraphRewrite::run_on_function(f);
 }

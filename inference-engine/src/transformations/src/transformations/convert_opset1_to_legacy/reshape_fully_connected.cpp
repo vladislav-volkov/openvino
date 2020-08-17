@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/reshape_fully_connected.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -20,6 +21,8 @@ ngraph::pass::ReshapeFullyConnected::ReshapeFullyConnected() {
     auto fc = std::make_shared<ngraph::op::FullyConnected>(input0, input1, input2, Shape{1, 1});
 
     ngraph::graph_rewrite_callback callback = [this](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ReshapeFullyConnected");
+
         auto fc = std::dynamic_pointer_cast<ngraph::op::FullyConnected> (m.get_match_root());
         if (!fc || m_transformation_callback(fc)) {
             return false;

@@ -22,6 +22,8 @@
 
 #include "transformations/convert_opset1_to_legacy/convert_mul_add_to_scaleshift_or_power.hpp"
 
+#include "transformations/itt.hpp"
+
 namespace ngraph {
 namespace pass {
 
@@ -36,6 +38,11 @@ public:
     ConvertMulOrAddFinally() : GraphRewrite() {
         convert_mul_or_add_finally<ngraph::opset1::Add>();
         convert_mul_or_add_finally<ngraph::opset1::Multiply>();
+    }
+
+    bool run_on_function(std::shared_ptr<ngraph::Function> f) override {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertMulOrAddFinally");
+        return GraphRewrite::run_on_function(f);
     }
 
 private:

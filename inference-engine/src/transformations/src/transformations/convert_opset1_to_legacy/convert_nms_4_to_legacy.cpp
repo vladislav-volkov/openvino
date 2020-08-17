@@ -13,6 +13,7 @@
 #include <transformations/utils/utils.hpp>
 
 #include "transformations/convert_opset1_to_legacy/convert_nms_4_to_legacy.hpp"
+#include "transformations/itt.hpp"
 
 ngraph::pass::ConvertNMS4ToLegacyMatcher::ConvertNMS4ToLegacyMatcher() {
     auto boxes = std::make_shared<pattern::op::Label>(element::f32, Shape{1, 1000, 4});
@@ -24,6 +25,8 @@ ngraph::pass::ConvertNMS4ToLegacyMatcher::ConvertNMS4ToLegacyMatcher() {
                                                                    iou_threshold, score_threshold);
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher &m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertNMS4ToLegacyMatcher");
+
         auto nms_4 = std::dynamic_pointer_cast<ngraph::opset4::NonMaxSuppression>(m.get_match_root());
         if (!nms_4) {
             return false;

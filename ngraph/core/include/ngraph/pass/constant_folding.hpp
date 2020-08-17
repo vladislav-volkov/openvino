@@ -49,6 +49,8 @@ public:
         construct_constant_default();
     }
 
+    bool run_on_function(std::shared_ptr<ngraph::Function> f) override;
+
 private:
     void construct_constant_quantize();
     void construct_constant_dequantize();

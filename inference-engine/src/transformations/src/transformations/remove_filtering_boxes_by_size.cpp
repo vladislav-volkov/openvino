@@ -9,6 +9,7 @@
 #include <ngraph/rt_info.hpp>
 
 #include "transformations/remove_filtering_boxes_by_size.hpp"
+#include "transformations/itt.hpp"
 
 void ngraph::pass::RemoveFilteringBoxesBySize::remove_filtering_boxes_by_size() {
     // variadic split
@@ -103,4 +104,9 @@ void ngraph::pass::RemoveFilteringBoxesBySize::remove_filtering_boxes_by_size() 
 
     auto m = std::make_shared<ngraph::pattern::Matcher>(cast, "RemoveFilteringBoxesBySize");
     this->add_matcher(m, callback, PassProperty::CHANGE_DYNAMIC_STATE);
+}
+
+bool ngraph::pass::RemoveFilteringBoxesBySize::run_on_function(std::shared_ptr<ngraph::Function> f) {
+    OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::RemoveFilteringBoxesBySize");
+    return GraphRewrite::run_on_function(f);
 }

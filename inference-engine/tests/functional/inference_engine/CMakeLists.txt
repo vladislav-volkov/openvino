@@ -18,6 +18,7 @@ addIeTargetTest(
             funcTestUtils
             ngraphFunctions
             inference_engine_transformations
+            openvino::itt
         ADD_CPPLINT
         DEPENDENCIES
             template_extension

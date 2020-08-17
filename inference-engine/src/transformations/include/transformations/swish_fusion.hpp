@@ -9,6 +9,7 @@
 
 #include <transformations_visibility.hpp>
 #include <ngraph/pass/graph_rewrite.hpp>
+#include "itt.hpp"
 
 namespace ngraph {
 namespace pass {
@@ -33,6 +34,11 @@ public:
         add_matcher<ngraph::pass::SwishFusionWithSigmoidWithBeta>();
         add_matcher<ngraph::pass::SwishFusionWithBeta>();
         add_matcher<ngraph::pass::SwishFusionWithoutBeta>();
+    }
+
+    bool run_on_function(std::shared_ptr<ngraph::Function> f) override {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::SwishFusion");
+        return GraphRewrite::run_on_function(f);
     }
 };
 

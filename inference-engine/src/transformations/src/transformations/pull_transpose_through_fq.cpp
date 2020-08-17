@@ -3,6 +3,7 @@
 //
 
 #include "transformations/pull_transpose_through_fq.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -21,6 +22,8 @@ ngraph::pass::PullTransposeThroughFQUp::PullTransposeThroughFQUp() {
     auto transpose = std::make_shared<ngraph::opset1::Transpose>(fq, transpose_order);
 
     ngraph::graph_rewrite_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::PullTransposeThroughFQUp");
+
         auto transpose = ngraph::as_type_ptr<ngraph::opset1::Transpose>(m.get_match_root());
         if (!transpose) {
             return false;

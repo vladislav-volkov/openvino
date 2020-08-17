@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/conv_bias_fusion.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <numeric>
@@ -37,8 +38,10 @@ std::pair<std::shared_ptr<A>, std::shared_ptr<B>> parse_eltwise_inputs(std::shar
 }
 
 template <class Conv>
-ngraph::graph_rewrite_callback get_callback() {
-    ngraph::graph_rewrite_callback callback = [](ngraph::pattern::Matcher &m) {
+ngraph::graph_rewrite_callback get_callback(const char *name) {
+    ngraph::graph_rewrite_callback callback = [name](ngraph::pattern::Matcher &m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, name);
+
         auto eltwise = m.get_match_root();
 
         std::shared_ptr<ngraph::opset1::Constant> m_const;
@@ -129,7 +132,7 @@ ngraph::pass::ConvAddFusion::ConvAddFusion() {
     auto conv = ngraph::pattern::wrap_type<op::ConvolutionIE>(pattern::consumers_count(1));
     auto add = ngraph::pattern::wrap_type<opset1::Add>({conv, std::make_shared<pattern::op::Label>()});
 
-    matcher_pass_callback callback = get_callback<op::ConvolutionIE>();
+    matcher_pass_callback callback = get_callback<op::ConvolutionIE>("ngraph::pass::ConvAddFusion");
 
     auto m = std::make_shared<ngraph::pattern::Matcher>(add, "ConvAddFusion");
     register_matcher(m, callback);
@@ -139,7 +142,7 @@ ngraph::pass::ConvMultiplyFusion::ConvMultiplyFusion() {
     auto conv = ngraph::pattern::wrap_type<op::ConvolutionIE>(pattern::consumers_count(1));
     auto add = ngraph::pattern::wrap_type<opset1::Multiply>({conv, std::make_shared<pattern::op::Label>()});
 
-    matcher_pass_callback callback = get_callback<op::ConvolutionIE>();
+    matcher_pass_callback callback = get_callback<op::ConvolutionIE>("ngraph::pass::ConvMultiplyFusion");
 
     auto m = std::make_shared<ngraph::pattern::Matcher>(add, "ConvMultiplyFusion");
     register_matcher(m, callback);
@@ -149,7 +152,7 @@ ngraph::pass::DeconvAddFusion::DeconvAddFusion() {
     auto conv = ngraph::pattern::wrap_type<op::DeconvolutionIE>(pattern::consumers_count(1));
     auto add = ngraph::pattern::wrap_type<opset1::Add>({conv, std::make_shared<pattern::op::Label>()});
 
-    matcher_pass_callback callback = get_callback<op::DeconvolutionIE>();
+    matcher_pass_callback callback = get_callback<op::DeconvolutionIE>("ngraph::pass::DeconvAddFusion");
 
     auto m = std::make_shared<ngraph::pattern::Matcher>(add, "DeconvAddFusion");
     register_matcher(m, callback);

@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/convert_proposal_to_proposal_ie.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -50,6 +51,8 @@ ngraph::pass::ConvertProposalToLegacyMatcher::ConvertProposalToLegacyMatcher() {
     auto proposal = ngraph::pattern::wrap_type<ngraph::opset1::Proposal>();
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher &m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertProposalToLegacyMatcher");
+
         auto proposal = std::dynamic_pointer_cast<ngraph::opset1::Proposal>(m.get_match_root());
 
         if (!proposal) {
@@ -66,6 +69,8 @@ ngraph::pass::ConvertProposal4ToLegacyMatcher::ConvertProposal4ToLegacyMatcher()
     auto proposal = ngraph::pattern::wrap_type<ngraph::opset4::Proposal>();
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher &m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertProposal4ToLegacyMatcher");
+
         auto proposal = std::dynamic_pointer_cast<ngraph::opset4::Proposal>(m.get_match_root());
 
         if (!proposal) {

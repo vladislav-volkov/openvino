@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/convert_prelu_to_relu_ie.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -20,6 +21,8 @@ ngraph::pass::ConvertPReLUToReLUIE::ConvertPReLUToReLUIE() {
 
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertPReLUToReLUIE");
+
         auto prelu = std::dynamic_pointer_cast<ngraph::opset1::PRelu> (m.get_match_root());
         if (!prelu) {
             return false;

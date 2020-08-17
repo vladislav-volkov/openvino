@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_minimum_to_power_and_max.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -15,6 +16,8 @@ ngraph::pass::ConvertMinimum::ConvertMinimum() {
     auto minimum = ngraph::pattern::wrap_type<opset1::Minimum>();
 
     ngraph::graph_rewrite_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertMinimum");
+
         auto minimum = std::dynamic_pointer_cast<ngraph::opset1::Minimum> (m.get_match_root());
         if (!minimum) {
             return false;

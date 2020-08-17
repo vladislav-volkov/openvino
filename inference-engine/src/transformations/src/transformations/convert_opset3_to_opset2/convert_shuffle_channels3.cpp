@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset3_to_opset2/convert_shuffle_channels3.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -97,4 +98,9 @@ void ngraph::pass::ConvertShuffleChannels3::convert_shuffle_channels3() {
 
     auto m = std::make_shared<ngraph::pattern::Matcher>(shuffle_channels, "ConvertShuffleChannels3");
     this->add_matcher(m, callback, PassProperty::CHANGE_DYNAMIC_STATE);
+}
+
+bool ngraph::pass::ConvertShuffleChannels3::run_on_function(std::shared_ptr<ngraph::Function> f) {
+    OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertShuffleChannels3");
+    return GraphRewrite::run_on_function(f);
 }

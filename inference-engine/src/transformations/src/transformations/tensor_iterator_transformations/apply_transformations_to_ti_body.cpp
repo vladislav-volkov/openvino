@@ -15,7 +15,7 @@ ngraph::pass::ApplyTransformationsToTIBody::ApplyTransformationsToTIBody(ngraph:
     auto tensor_iterator = ngraph::pattern::wrap_type<ngraph::opset4::TensorIterator>();
 
     ngraph::matcher_pass_callback callback = [this, &manager](pattern::Matcher& m) {
-        OV_ITT_SCOPED_TASK(itt::domains::IETransform_LT, "ngraph::pass::ApplyTransformationsToTIBody");
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ApplyTransformationsToTIBody");
 
         auto ti = std::dynamic_pointer_cast<ngraph::opset4::TensorIterator>(m.get_match_root());
         if (!ti) {

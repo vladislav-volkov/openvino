@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/convert_gathertree_to_gathertree_ie.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -18,6 +19,8 @@ ngraph::pass::ConvertGatherTreeToGatherTreeIEMatcher::ConvertGatherTreeToGatherT
     auto gt = std::make_shared<ngraph::opset1::GatherTree>(input0, input1, input2, input3);
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertGatherTreeToGatherTreeIEMatcher");
+
         auto gt = std::dynamic_pointer_cast<ngraph::opset1::GatherTree> (m.get_match_root());
         if (!gt) {
             return false;

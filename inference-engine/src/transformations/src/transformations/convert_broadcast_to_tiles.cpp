@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_broadcast_to_tiles.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -15,6 +16,8 @@ ngraph::pass::ConvertBroadcastToTiles::ConvertBroadcastToTiles() {
     auto broadcast = ngraph::pattern::wrap_type<ngraph::opset1::Broadcast>();
 
     ngraph::graph_rewrite_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertBroadcastToTiles");
+
         auto broadcast = std::dynamic_pointer_cast<ngraph::opset1::Broadcast>(m.get_match_root());
 
         if (!broadcast) {

@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/convert_topk_to_topk_ie.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -18,6 +19,8 @@ ngraph::pass::ConvertTopKToTopKIEMatcher::ConvertTopKToTopKIEMatcher() {
     auto topk = ngraph::pattern::wrap_type<opset1::TopK>();
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher &m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertTopKToTopKIEMatcher");
+
         auto topk = std::dynamic_pointer_cast<opset1::TopK>(m.get_match_root());
         if (!topk || topk->input(1).get_partial_shape().rank().is_dynamic()) {
             return false;

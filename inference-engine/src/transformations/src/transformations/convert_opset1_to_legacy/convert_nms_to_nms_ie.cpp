@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/convert_nms_to_nms_ie.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -18,6 +19,8 @@ ngraph::pass::ConvertNMSToNMSIEMatcher::ConvertNMSToNMSIEMatcher() {
     auto nms = ngraph::pattern::wrap_type<opset3::NonMaxSuppression>();
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher &m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertNMSToNMSIEMatcher");
+
         auto nms = std::dynamic_pointer_cast<opset3::NonMaxSuppression>(m.get_match_root());
         if (!nms) {
             return false;

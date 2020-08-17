@@ -35,8 +35,6 @@ struct Parsed {
 
 template <typename T = Parameter>
 Parsed<T> parseDeviceNameIntoConfig(const std::string& deviceName, const std::map<std::string, T>& config = {}) {
-    OV_ITT_SCOPED_TASK(itt::domains::IE_LT, "parseDeviceNameIntoConfig");
-
     auto config_ = config;
     auto deviceName_ = deviceName;
     if (deviceName_.find("HETERO:") == 0) {

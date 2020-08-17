@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_scatter_elements_to_scatter.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -208,4 +209,9 @@ void ngraph::pass::ConvertScatterElementsToScatter::convert_scatter_elements_to_
 
     auto m = std::make_shared<ngraph::pattern::Matcher>(scatter, "ConvertScatterElementsToScatter");
     this->add_matcher(m, callback, PassProperty::CHANGE_DYNAMIC_STATE);
+}
+
+bool ngraph::pass::ConvertScatterElementsToScatter::run_on_function(std::shared_ptr<ngraph::Function> f) {
+    OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertScatterElementsToScatter");
+    return GraphRewrite::run_on_function(f);
 }

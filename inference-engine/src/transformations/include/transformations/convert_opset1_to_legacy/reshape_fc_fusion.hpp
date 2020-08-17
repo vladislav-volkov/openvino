@@ -20,6 +20,7 @@
 
 #include <ngraph/pass/graph_rewrite.hpp>
 #include <transformations/utils/utils.hpp>
+#include <transformations/itt.hpp>
 
 namespace ngraph {
 namespace pass {
@@ -36,6 +37,7 @@ public:
     }
 
     bool run_on_function(std::shared_ptr<ngraph::Function> f) override {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ReshapeFullyConnectedFusion");
         if (!ngraph::op::util::has_op_with_type<ngraph::op::FakeQuantize>(f)) {
             return GraphRewrite::run_on_function(f);
         }

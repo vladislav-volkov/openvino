@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_space_to_depth.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -15,6 +16,8 @@ ngraph::pass::ConvertSpaceToDepth::ConvertSpaceToDepth() {
     auto dts = ngraph::pattern::wrap_type<ngraph::opset1::SpaceToDepth>();
 
     ngraph::graph_rewrite_callback callback = [this](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertSpaceToDepth");
+
         auto std_node = std::dynamic_pointer_cast<ngraph::opset1::SpaceToDepth> (m.get_match_root());
         if (!std_node || m_transformation_callback(std_node)) {
             return false;

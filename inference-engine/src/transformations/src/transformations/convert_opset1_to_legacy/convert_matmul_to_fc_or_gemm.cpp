@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/convert_matmul_to_fc_or_gemm.hpp"
+#include "transformations/itt.hpp"
 
 #include <algorithm>
 #include <utility>
@@ -24,6 +25,8 @@ ngraph::pass::ConvertMatMulToFC::ConvertMatMulToFC() {
     auto matmul = std::make_shared<ngraph::opset1::MatMul>(input_0, input_1);
 
     ngraph::matcher_pass_callback callback = [this](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertMatMulToFC");
+
         auto matmul = std::dynamic_pointer_cast<ngraph::opset1::MatMul>(m.get_match_root());
         if (!matmul || m_transformation_callback(matmul)) {
             return false;
@@ -165,6 +168,8 @@ ngraph::pass::ConvertMatMulToGemm::ConvertMatMulToGemm() {
     auto matmul = std::make_shared<ngraph::opset1::MatMul>(input_0, input_1);
 
     ngraph::matcher_pass_callback callback = [this](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertMatMulToGemm");
+
         auto matmul = std::dynamic_pointer_cast<ngraph::opset1::MatMul>(m.get_match_root());
         if (!matmul) {
             return false;

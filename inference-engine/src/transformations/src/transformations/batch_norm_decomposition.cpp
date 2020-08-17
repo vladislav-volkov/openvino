@@ -3,6 +3,7 @@
 //
 
 #include "transformations/batch_norm_decomposition.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -24,6 +25,8 @@ ngraph::pass::BatchNormDecomposition::BatchNormDecomposition() {
     auto bn = make_shared<opset1::BatchNormInference>(input, gamma, beta, mean, var, 0.001);
 
     ngraph::graph_rewrite_callback callback = [this, input, gamma, beta, mean, var](ngraph::pattern::Matcher &m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::BatchNormDecomposition");
+
         auto pattern_map = m.get_pattern_map();
 
         auto m_input = pattern_map[input];

@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_mod.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -15,6 +16,8 @@ ngraph::pass::ConvertMod::ConvertMod() {
     auto mod = ngraph::pattern::wrap_type<opset1::Mod>();
 
     ngraph::matcher_pass_callback callback = [this](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertMod");
+
         auto mod = std::dynamic_pointer_cast<ngraph::opset1::Mod> (m.get_match_root());
         if (!mod) {
             return false;

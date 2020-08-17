@@ -3,6 +3,7 @@
 //
 
 #include "transformations/mish_fusion.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -20,6 +21,8 @@ ngraph::pass::MishFusion::MishFusion() {
     auto mul = std::make_shared<ngraph::opset4::Multiply>(input, tanh);
 
     ngraph::graph_rewrite_callback matcher_pass_callback = [=](ngraph::pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::MishFusion");
+
         auto & pattern_to_output = m.get_pattern_value_map();
         auto exp_input = pattern_to_output.at(input);
 

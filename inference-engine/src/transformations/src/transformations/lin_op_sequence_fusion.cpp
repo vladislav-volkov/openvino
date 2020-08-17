@@ -3,6 +3,7 @@
 //
 
 #include "transformations/lin_op_sequence_fusoin.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -35,6 +36,8 @@ ngraph::pass::AddMultiplyFusion::AddMultiplyFusion() {
     auto m_mul = ngraph::pattern::wrap_type<opset3::Multiply>({m_add, m_mul_constant});
 
     ngraph::matcher_pass_callback callback = [=](ngraph::pattern::Matcher & m) -> bool {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::AddMultiplyFusion");
+
         auto & label_to_output = m.get_pattern_value_map();
 
         auto mul = label_to_output[m_mul].get_node_shared_ptr();
@@ -71,6 +74,8 @@ ngraph::pass::AddAddFusion::AddAddFusion() {
     auto m_add2 = ngraph::pattern::wrap_type<opset3::Add>({m_add1, m_add2_constant});
 
     ngraph::matcher_pass_callback callback = [=](ngraph::pattern::Matcher & m) -> bool {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::AddAddFusion");
+
         auto & label_to_output = m.get_pattern_value_map();
 
         auto add1 = label_to_output[m_add1].get_node_shared_ptr();
@@ -103,6 +108,8 @@ ngraph::pass::MultiplyMultiplyFusion::MultiplyMultiplyFusion() {
     auto m_mul2 = ngraph::pattern::wrap_type<ngraph::opset3::Multiply>({m_mul1, m_mul2_constant});
 
     ngraph::matcher_pass_callback callback = [=](ngraph::pattern::Matcher & m) -> bool {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::MultiplyMultiplyFusion");
+
         auto & label_to_output = m.get_pattern_value_map();
 
         auto mul1 = label_to_output[m_mul1].get_node_shared_ptr();

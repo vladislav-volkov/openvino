@@ -15,6 +15,7 @@
 //*****************************************************************************
 
 #include "constant_folding.hpp"
+#include "itt.hpp"
 
 using namespace std;
 using namespace ngraph;
@@ -66,4 +67,10 @@ void ngraph::pass::ConstantFolding::construct_constant_default()
             return result;
         },
         PassProperty::CHANGE_DYNAMIC_STATE));
+}
+
+bool ngraph::pass::ConstantFolding::run_on_function(std::shared_ptr<ngraph::Function> f)
+{
+    OV_ITT_SCOPED_TASK(ngraph::itt::domains::nGraphPass_LT, "ngraph::pass::ConstantFolding");
+    return GraphRewrite::run_on_function(f);
 }

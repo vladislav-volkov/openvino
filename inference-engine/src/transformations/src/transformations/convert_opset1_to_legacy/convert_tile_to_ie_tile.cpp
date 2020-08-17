@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/convert_tile_to_ie_tile.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -18,6 +19,8 @@ ngraph::pass::ConvertTileToLegacyMatcher::ConvertTileToLegacyMatcher() {
     auto tile = std::make_shared<ngraph::opset1::Tile>(data, shp);
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertTileToLegacyMatcher");
+
         auto tile = std::dynamic_pointer_cast<ngraph::opset1::Tile> (m.get_match_root());
         if (!tile) {
             return false;

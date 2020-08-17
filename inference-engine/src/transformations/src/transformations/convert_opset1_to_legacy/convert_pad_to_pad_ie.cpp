@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/convert_pad_to_pad_ie.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -15,6 +16,8 @@ ngraph::pass::ConvertPadToLegacyMatcher::ConvertPadToLegacyMatcher() {
     auto m_pad = ngraph::pattern::wrap_type<ngraph::opset1::Pad>();
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertPadToLegacyMatcher");
+
         auto pad = std::dynamic_pointer_cast<ngraph::opset1::Pad> (m.get_match_root());
         if (!pad) {
             return false;

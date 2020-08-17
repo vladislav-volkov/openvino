@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset3_to_opset2/convert_broadcast3.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -51,4 +52,9 @@ void ngraph::pass::ConvertBroadcast3::convert_broadcast3() {
 
     auto m = std::make_shared<ngraph::pattern::Matcher>(broadcast, "ConvertBroadcast3");
     this->add_matcher(m, callback, PassProperty::CHANGE_DYNAMIC_STATE);
+}
+
+bool ngraph::pass::ConvertBroadcast3::run_on_function(std::shared_ptr<ngraph::Function> f) {
+    OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertBroadcast3");
+    return GraphRewrite::run_on_function(f);
 }

@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/convert_interpolate_to_interp_or_resample.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -21,6 +22,8 @@ ngraph::pass::ConvertInterpolateToInterpOrResampleMatcher::ConvertInterpolateToI
     auto interpolate = std::make_shared<ngraph::opset1::Interpolate>(data, shp, ngraph::op::v0::InterpolateAttrs());
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertInterpolateToInterpOrResampleMatcher");
+
         auto interpolate = std::dynamic_pointer_cast<ngraph::opset1::Interpolate> (m.get_match_root());
         if (!interpolate)
             return false;

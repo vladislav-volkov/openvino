@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/fc_bias_fusion.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <numeric>
@@ -17,6 +18,8 @@ ngraph::pass::FullyConnectedBiasFusion::FullyConnectedBiasFusion() {
     auto add = ngraph::pattern::wrap_type<opset1::Add>({fc, std::make_shared<pattern::op::Label>()});
 
     ngraph::graph_rewrite_callback callback = [](pattern::Matcher &m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::FullyConnectedBiasFusion");
+
         auto add = m.get_match_root();
         auto add_input_0 = add->input(0).get_source_output().get_node_shared_ptr();
         auto add_input_1 = add->input(1).get_source_output().get_node_shared_ptr();

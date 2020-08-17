@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_divide.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -15,6 +16,8 @@ ngraph::pass::ConvertDivide::ConvertDivide() {
     auto div = ngraph::pattern::wrap_type<ngraph::opset1::Divide>();
 
     ngraph::graph_rewrite_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertDivide");
+
         auto div = std::dynamic_pointer_cast<ngraph::opset1::Divide> (m.get_match_root());
         // We can not apply this transformation in case with integer input data type
         if (!div || div->input(0).get_element_type().is_integral()) {

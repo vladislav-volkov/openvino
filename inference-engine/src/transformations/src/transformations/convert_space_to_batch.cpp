@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_space_to_batch.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -14,6 +15,8 @@
 void ngraph::pass::ConvertSpaceToBatch::convert_space_to_batch() {
     auto space_to_batch = ngraph::pattern::wrap_type<ngraph::opset3::SpaceToBatch>();
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertSpaceToBatch");
+
         auto space_to_batch = std::dynamic_pointer_cast<ngraph::opset3::SpaceToBatch> (m.get_match_root());
         if (!space_to_batch) {
             return false;
@@ -118,6 +121,8 @@ void ngraph::pass::ConvertSpaceToBatch::convert_space_to_batch() {
 void ngraph::pass::ConvertSpaceToBatch::convert_space_to_batch_by_elements() {
     auto space_to_batch = ngraph::pattern::wrap_type<ngraph::opset3::SpaceToBatch>();
     ngraph::matcher_pass_callback callback = [this](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertSpaceToBatch");
+
         auto space_to_batch = std::dynamic_pointer_cast<ngraph::opset3::SpaceToBatch> (m.get_match_root());
         if (!space_to_batch) {
             return false;

@@ -27,6 +27,8 @@ public:
         convert_gelu();
     }
 
+    bool run_on_function(std::shared_ptr<ngraph::Function> f) override;
+
 private:
     void convert_gelu();
 };

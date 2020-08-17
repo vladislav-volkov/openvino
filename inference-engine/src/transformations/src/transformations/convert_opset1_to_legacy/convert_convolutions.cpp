@@ -3,6 +3,7 @@
 //
 
 #include "transformations/convert_opset1_to_legacy/convert_convolutions.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -19,6 +20,8 @@ ngraph::pass::ConvertConvolution::ConvertConvolution() {
     auto conv = ngraph::pattern::wrap_type<opset1::Convolution>();
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertConvolution");
+
         auto conv = std::dynamic_pointer_cast<ngraph::opset1::Convolution> (m.get_match_root());
         if (!conv) {
             return false;
@@ -46,6 +49,8 @@ ngraph::pass::ConvertGroupConvolution::ConvertGroupConvolution() {
     auto gconv = ngraph::pattern::wrap_type<opset1::GroupConvolution>();
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertGroupConvolution");
+
         auto gconv = std::dynamic_pointer_cast<ngraph::opset1::GroupConvolution> (m.get_match_root());
         if (!gconv) {
             return false;
@@ -88,6 +93,8 @@ ngraph::pass::ConvertDeconvolution::ConvertDeconvolution() {
     auto conv = ngraph::pattern::wrap_type<opset1::ConvolutionBackpropData>();
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertDeconvolution");
+
         auto deconv = std::dynamic_pointer_cast<ngraph::opset1::ConvolutionBackpropData> (m.get_match_root());
         if (!deconv) {
             return false;
@@ -118,6 +125,8 @@ ngraph::pass::ConvertGroupDeconvolution::ConvertGroupDeconvolution() {
     auto gconv = ngraph::pattern::wrap_type<opset1::GroupConvolutionBackpropData>();
 
     ngraph::matcher_pass_callback callback = [](pattern::Matcher& m) {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::ConvertGroupDeconvolution");
+
         auto gconv = std::dynamic_pointer_cast<ngraph::opset1::GroupConvolutionBackpropData> (m.get_match_root());
         if (!gconv) {
             return false;

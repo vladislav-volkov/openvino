@@ -13,6 +13,8 @@
 #include <ngraph/slice_plan.hpp>
 #include <ngraph/util.hpp>
 
+#include "itt.hpp"
+
 namespace ngraph {
 namespace pass {
 
@@ -65,6 +67,7 @@ public:
 class ngraph::pass::StridedSliceOptimization: public ngraph::pass::FunctionPass {
 public:
     bool run_on_function(std::shared_ptr<ngraph::Function> f) override {
+        OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::StridedSliceOptimization");
         bool rewritten = UselessStridedSliceEraser().run_on_function(f);
         rewritten |= SharedStridedSliceEraser().run_on_function(f);
         rewritten |= GroupedStridedSliceOptimizer().run_on_function(f);

@@ -5,6 +5,7 @@
 #include "transformations/init_node_info.hpp"
 #include "transformations/rt_info/fused_names_attribute.hpp"
 #include "transformations/rt_info/primitives_priority_attribute.hpp"
+#include "transformations/itt.hpp"
 
 #include <memory>
 #include <vector>
@@ -14,6 +15,8 @@
 #include <ngraph/variant.hpp>
 
 bool ngraph::pass::InitNodeInfo::run_on_function(std::shared_ptr<ngraph::Function> f) {
+    OV_ITT_SCOPED_TASK(ngraph::pass::itt::domains::nGraphPass_LT, "ngraph::pass::InitNodeInfo");
+
     std::vector<std::shared_ptr<Variant> > attributes {
         std::make_shared<VariantWrapper<FusedNames> >(FusedNames())
     };

@@ -46,16 +46,13 @@ MKLDNNExecNetwork::MKLDNNExecNetwork(const InferenceEngine::ICNNNetwork &network
     extensionManager(extMgr),
     _cfg{cfg},
     _name{network.getName()} {
-    OV_ITT_SCOPED_TASK(itt::domains::MKLDNNPlugin, "MKLDNNExecNetwork::MKLDNNExecNetwork");
+    OV_ITT_TASK_CHAIN(taskChain, MKLDNNPlugin::itt::domains::MKLDNN_LT, "MKLDNNExecNetwork", "cloneNet");
 
     // we are cloning network if we have statistics and we can transform network.
-    {
-        OV_ITT_SCOPED_TASK(MKLDNNPlugin::itt::domains::MKLDNN_LT, "cloneNet_IE2IE");
-        _clonedNetwork = cloneNet(network);
-    }
+    _clonedNetwork = cloneNet(network);
 
     if (_cfg.lpTransformsMode == Config::LPTransformsMode::On) {
-        OV_ITT_SCOPED_TASK(MKLDNNPlugin::itt::domains::MKLDNN_LT, "LPTransformation");
+        OV_ITT_TASK_NEXT(taskChain, "LPTransformation");
         auto params = LayerTransformation::Params(true,  // updatePrecisions
                                                     true,  // quantizeOutputs
                                                     true,  // weightsToConst
@@ -99,10 +96,10 @@ MKLDNNExecNetwork::MKLDNNExecNetwork(const InferenceEngine::ICNNNetwork &network
         }
     }
 
-    {
-        OV_ITT_SCOPED_TASK(MKLDNNPlugin::itt::domains::MKLDNN_LT, "UnrollPasses");
-        MKLDNNGraph::ApplyUnrollPasses(static_cast<ICNNNetwork&>(*_clonedNetwork));
-    }
+    OV_ITT_TASK_NEXT(taskChain, "UnrollPasses");
+    MKLDNNGraph::ApplyUnrollPasses(static_cast<ICNNNetwork&>(*_clonedNetwork));
+
+    OV_ITT_TASK_SKIP(taskChain);
 
     if (_cfg.enableDynamicBatch) {
         // check topology for applicability

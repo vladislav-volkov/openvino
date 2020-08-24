@@ -156,46 +156,7 @@ void MKLDNNInputNode::execute(mkldnn::stream strm) {
 
         ie_memcpy(dstData, dstBlob->byteSize(), srcData, constBlob->byteSize());
     } else {
-        switch (precision.size()) {
-            case 1: {
-                const int8_t *srcData = constBlob->cbuffer().as<int8_t *>();
-                int8_t *dstData = dstBlob->buffer();
-
-                for (size_t i = 0; i < constBlob->size(); i++)
-                    dstData[dstBlob->getTensorDesc().offset(i)] = srcData[i];
-
-                break;
-            }
-            case 2: {
-                const int16_t *srcData = constBlob->cbuffer().as<int16_t *>();
-                int16_t *dstData = dstBlob->buffer();
-
-                for (size_t i = 0; i < constBlob->size(); i++)
-                    dstData[dstBlob->getTensorDesc().offset(i)] = srcData[i];
-
-                break;
-            }
-            case 4: {
-                const int32_t *srcData = constBlob->cbuffer().as<int32_t *>();
-                int32_t *dstData = dstBlob->buffer();
-
-                for (size_t i = 0; i < constBlob->size(); i++)
-                    dstData[dstBlob->getTensorDesc().offset(i)] = srcData[i];
-
-                break;
-            }
-            case 8: {
-                const int64_t *srcData = constBlob->cbuffer().as<int64_t *>();
-                int64_t *dstData = dstBlob->buffer();
-
-                for (size_t i = 0; i < constBlob->size(); i++)
-                    dstData[dstBlob->getTensorDesc().offset(i)] = srcData[i];
-
-                break;
-            }
-            default:
-                THROW_IE_EXCEPTION << "Unsupported precision for node " << getName();
-        }
+        THROW_IE_EXCEPTION << "Incompatible shapes of constant blob and input node " << getName();
     }
 }
 

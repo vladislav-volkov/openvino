@@ -30,6 +30,8 @@ source_group("include" FILES ${PUBLIC_HEADERS})
 # Create shared library
 add_library(${TARGET_NAME} STATIC ${LIBRARY_SRC} ${PUBLIC_HEADERS})
 
+target_link_libraries(${TARGET_NAME} PUBLIC openvino::mt)
+
 # Defines macro in C++ to load backend plugin
 target_include_directories(${TARGET_NAME} PUBLIC ${REF_IMPL_INCLUDE_DIR})
 target_include_directories(${TARGET_NAME} PRIVATE ${NGRAPH_INCLUDE_PATH}

@@ -12,6 +12,12 @@
 #include <ngraph/opsets/opset1.hpp>
 #include <ngraph_ops/type_relaxed.hpp>
 
+#if IE_THREAD == IE_THREAD_TBB || IE_THREAD == IE_THREAD_TBB_AUTO
+#include <tbb/parallel_for.h>
+#endif
+
+#include <immintrin.h>
+
 using namespace ngraph;
 
 bool fuse_type_to_constant(std::shared_ptr<ngraph::Node> & node, ngraph::element::Type to, const std::vector<ngraph::Input<ngraph::Node>> & consumers);
@@ -295,23 +301,119 @@ bool extend_select_type(std::shared_ptr<ngraph::Node> & node, ngraph::element::T
     return false;
 }
 
+#if IE_THREAD == IE_THREAD_TBB || IE_THREAD == IE_THREAD_TBB_AUTO
+
 template <element::Type_t PREC_FROM, element::Type_t PREC_TO>
 std::shared_ptr<Node> change_constant_precision(std::shared_ptr<opset4::Constant> & constant) {
     using src_type = typename element_type_traits<PREC_FROM>::value_type;
     using dst_type = typename element_type_traits<PREC_TO>::value_type;
 
     std::vector<src_type> data(std::move(constant->get_vector<src_type>()));
-    std::vector<dst_type> final_data;
-    std::transform(data.begin(), data.end(), std::back_inserter(final_data),
-                   [](src_type val) {
-                       if (val > std::numeric_limits<dst_type>::max()) {
-                           return std::numeric_limits<dst_type>::max();
-                       } else {
-                           return static_cast<dst_type>(val);
-                       }
-                   });
+    std::vector<dst_type> final_data(data.size());
+
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, data.size()),
+                        [&](tbb::blocked_range<size_t> range) {
+                            for (size_t i = range.begin(); i < range.end(); ++i) {
+                                src_type val = data[i];
+
+                                if (val > std::numeric_limits<dst_type>::max()) {
+                                    final_data[i] = std::numeric_limits<dst_type>::max();
+                                } else {
+                                    final_data[i] = static_cast<dst_type>(val);
+                                }
+                            }
+                        });
+
     return std::make_shared<ngraph::opset4::Constant>(PREC_TO, constant->get_shape(), final_data);
 }
+
+template <>
+std::shared_ptr<Node> change_constant_precision<element::Type_t::f16, element::Type_t::f32>(std::shared_ptr<opset4::Constant> & constant) {
+    using src_type = element_type_traits<element::Type_t::f16>::value_type;
+    using dst_type = element_type_traits<element::Type_t::f32>::value_type;
+
+    std::vector<src_type> data(std::move(constant->get_vector<src_type>()));
+    std::vector<dst_type> final_data(data.size());
+
+    // TODO: Add SSE2/FP16C/AVX check
+
+    size_t const n = data.size() / 8;
+
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, n),
+                        [&](tbb::blocked_range<size_t> range) {
+                            for (size_t i = range.begin(); i < range.end(); ++i) {
+                                __m128i f16vec = _mm_loadu_si128((const __m128i*)&data[i * 8]);     // SSE2
+                                __m256 f32vec = _mm256_cvtph_ps(f16vec);                            // FP16C
+                                _mm256_storeu_ps(&final_data[i * 8], f32vec);                       // AVX
+                            }
+                        });
+
+    std::transform(data.begin() + n * 8, data.end(), final_data.begin() + n * 8,
+                [](src_type val) {
+                    return static_cast<dst_type>(val);
+                });
+
+/*
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, data.size()),
+                        [&](tbb::blocked_range<size_t> range) {
+                            for (size_t i = range.begin(); i < range.end(); ++i) {
+                                src_type val = data[i];
+                                final_data[i] = static_cast<dst_type>(val);
+                            }
+                        });
+*/
+    return std::make_shared<ngraph::opset4::Constant>(element::Type_t::f32, constant->get_shape(), final_data);
+}
+
+#else
+
+template <element::Type_t PREC_FROM, element::Type_t PREC_TO>
+std::shared_ptr<Node> change_constant_precision(std::shared_ptr<opset4::Constant> & constant) {
+    using src_type = typename element_type_traits<PREC_FROM>::value_type;
+    using dst_type = typename element_type_traits<PREC_TO>::value_type;
+
+    std::vector<src_type> data(std::move(constant->get_vector<src_type>()));
+    std::vector<dst_type> final_data(data.size());
+
+    std::transform(data.begin(), data.end(), final_data.begin(),
+                [](src_type val) {
+                    if (val > std::numeric_limits<dst_type>::max()) {
+                        return std::numeric_limits<dst_type>::max();
+                    } else {
+                        return static_cast<dst_type>(val);
+                    }
+                });
+
+    return std::make_shared<ngraph::opset4::Constant>(PREC_TO, constant->get_shape(), final_data);
+}
+
+template <>
+std::shared_ptr<Node> change_constant_precision<element::Type_t::f16, element::Type_t::f32>(std::shared_ptr<opset4::Constant> & constant) {
+    using src_type = element_type_traits<element::Type_t::f16>::value_type;
+    using dst_type = element_type_traits<element::Type_t::f32>::value_type;
+
+    std::vector<src_type> data(std::move(constant->get_vector<src_type>()));
+    std::vector<dst_type> final_data(data.size());
+
+    // TODO: Add SSE2/FP16C/AVX check
+
+    size_t const n = data.size() / 8;
+
+    for (size_t i = 0; i < n * 8; i += 8) {
+        __m128i f16vec = _mm_loadu_si128((const __m128i*)&data[i * 8]);     // SSE2
+        __m256 f32vec = _mm256_cvtph_ps(f16vec);                            // FP16C
+        _mm256_storeu_ps(&final_data[i * 8], f32vec);                       // AVX
+    }
+
+    std::transform(data.begin() + n * 8, data.end(), final_data.begin() + n * 8,
+                [](src_type val) {
+                    return static_cast<dst_type>(val);
+                });
+
+    return std::make_shared<ngraph::opset4::Constant>(element::Type_t::f32, constant->get_shape(), final_data);
+}
+
+#endif
 
 bool fuse_type_to_constant(std::shared_ptr<Node> & node, element::Type to, const std::vector<Input<Node>> & consumers) {
     if (auto constant = as_type_ptr<opset4::Constant>(node)) {

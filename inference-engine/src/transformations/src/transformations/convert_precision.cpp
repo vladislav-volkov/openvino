@@ -389,7 +389,6 @@ std::shared_ptr<Node> change_constant_precision<element::Type_t::f16, element::T
 
     return new_constant;
 }
-
 #endif
 
 bool fuse_type_to_constant(std::shared_ptr<Node> & node, element::Type to, const std::vector<Input<Node>> & consumers) {

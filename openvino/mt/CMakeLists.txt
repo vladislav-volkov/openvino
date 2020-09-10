@@ -14,10 +14,21 @@
 # limitations under the License.
 # ******************************************************************************
 
-cmake_minimum_required(VERSION 3.10)
+set(TARGET_NAME mt)
 
-add_subdirectory(itt)
-add_subdirectory(mt)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-openvino_developer_export_targets(openvino::itt)
-openvino_developer_export_targets(openvino::mt)
+# TBB library is stored on ftp
+include(parallel)
+
+file(GLOB_RECURSE SOURCES "src/*.cpp")
+
+add_library(${TARGET_NAME} STATIC ${SOURCES})
+
+add_library(openvino::mt ALIAS ${TARGET_NAME})
+
+target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+target_compile_options(${TARGET_NAME} PUBLIC -Wno-undef)
+
+set_threading_interface_for(${TARGET_NAME})

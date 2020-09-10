@@ -107,9 +107,7 @@ target_include_directories(${TARGET_NAME}_plugin_api INTERFACE
     $<TARGET_PROPERTY:${TARGET_NAME}_preproc,INTERFACE_INCLUDE_DIRECTORIES>
     ${PUBLIC_HEADERS_DIR})
 
-target_link_libraries(${TARGET_NAME}_plugin_api INTERFACE openvino::itt)
-
-set_ie_threading_interface_for(${TARGET_NAME}_plugin_api)
+target_link_libraries(${TARGET_NAME}_plugin_api INTERFACE openvino::itt openvino::mt)
 
 file(GLOB_RECURSE plugin_api_src "${IE_MAIN_SOURCE_DIR}/src/plugin_api/*.hpp"
                                  "${IE_MAIN_SOURCE_DIR}/src/plugin_api/*.h")
@@ -137,10 +135,13 @@ add_library(${TARGET_NAME}_obj OBJECT
             ${LIBRARY_HEADERS}
             ${PUBLIC_HEADERS})
 
-target_compile_definitions(${TARGET_NAME}_obj PRIVATE IMPLEMENT_INFERENCE_ENGINE_API)
+target_compile_definitions(${TARGET_NAME}_obj PRIVATE IMPLEMENT_INFERENCE_ENGINE_API
+                                              PUBLIC $<TARGET_PROPERTY:openvino::mt,INTERFACE_COMPILE_DEFINITIONS>)
+target_compile_options(${TARGET_NAME}_obj PRIVATE $<TARGET_PROPERTY:openvino::mt,INTERFACE_COMPILE_OPTIONS>)
 
 target_include_directories(${TARGET_NAME}_obj SYSTEM PRIVATE $<TARGET_PROPERTY:ngraph::ngraph,INTERFACE_INCLUDE_DIRECTORIES>
-                                                             $<TARGET_PROPERTY:pugixml,INTERFACE_INCLUDE_DIRECTORIES>)
+                                                             $<TARGET_PROPERTY:pugixml,INTERFACE_INCLUDE_DIRECTORIES>
+                                                             $<TARGET_PROPERTY:openvino::mt,INTERFACE_INCLUDE_DIRECTORIES>)
 
 target_include_directories(${TARGET_NAME}_obj PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"
                                                       "${IE_MAIN_SOURCE_DIR}/src/readers/ir_reader" # for ie_ir_version.hpp
@@ -153,8 +154,6 @@ if(ENABLE_MKL_DNN)
     target_include_directories(${TARGET_NAME}_obj SYSTEM PRIVATE "${IE_MAIN_SOURCE_DIR}/thirdparty/mkl-dnn/src/cpu/xbyak")
 endif()
 
-set_ie_threading_interface_for(${TARGET_NAME}_obj)
-
 add_cpplint_target(${TARGET_NAME}_cpplint FOR_TARGETS ${TARGET_NAME}_obj)
 
 # Create shared library file from object library
@@ -163,11 +162,9 @@ add_library(${TARGET_NAME} SHARED
             ${IE_STATIC_DEPENDENT_FILES}
             $<TARGET_OBJECTS:${TARGET_NAME}_obj>)
 
-set_ie_threading_interface_for(${TARGET_NAME})
-
 target_link_libraries(${TARGET_NAME} PRIVATE ${CMAKE_DL_LIBS} Threads::Threads pugixml openvino::itt
                                              ${NGRAPH_LIBRARIES} inference_engine_transformations
-                                     PUBLIC ${TARGET_NAME}_legacy)
+                                     PUBLIC ${TARGET_NAME}_legacy openvino::mt)
 
 target_include_directories(${TARGET_NAME} INTERFACE ${PUBLIC_HEADERS_DIR} PRIVATE
                                                 $<TARGET_PROPERTY:${TARGET_NAME}_plugin_api,INTERFACE_INCLUDE_DIRECTORIES>)
@@ -189,8 +186,6 @@ add_library(${TARGET_NAME}_s STATIC
             $<TARGET_OBJECTS:${TARGET_NAME}_legacy_obj>
             ${IE_STATIC_DEPENDENT_FILES})
 
-set_ie_threading_interface_for(${TARGET_NAME}_s)
-
 target_include_directories(${TARGET_NAME}_s PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}"
     $<TARGET_PROPERTY:inference_engine_plugin_api,INTERFACE_INCLUDE_DIRECTORIES>
     "${IE_MAIN_SOURCE_DIR}/src/legacy_api/src")
@@ -201,7 +196,7 @@ endif()
 
 target_link_libraries(${TARGET_NAME}_s PRIVATE ${CMAKE_DL_LIBS} ${NGRAPH_LIBRARIES}
                                                inference_engine_transformations openvino::itt
-                                       PUBLIC pugixml)
+                                       PUBLIC pugixml openvino::mt)
 
 target_compile_definitions(${TARGET_NAME}_s PUBLIC USE_STATIC_IE)
 

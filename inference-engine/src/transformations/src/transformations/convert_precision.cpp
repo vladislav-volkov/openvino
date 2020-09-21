@@ -345,12 +345,9 @@ static std::shared_ptr<Node> change_constant_precision(std::shared_ptr<opset4::C
     auto new_constant = std::make_shared<ngraph::opset4::Constant>(PREC_TO, constant->get_shape());
     auto * dst_data = const_cast<dst_type *>(reinterpret_cast<const dst_type *>(new_constant->get_data_ptr()));
 
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, size),
-                        [&](tbb::blocked_range<size_t> range) {
-                            for (size_t i = range.begin(); i < range.end(); ++i) {
-                                dst_data[i] = convert_value<src_type, dst_type>(src_data[i]);
-                            }
-                        });
+    for (size_t i = 0; i < size; ++i) {
+        dst_data[i] = convert_value<src_type, dst_type>(src_data[i]);
+    }
 
     return new_constant;
 }
@@ -368,19 +365,14 @@ std::shared_ptr<Node> change_constant_precision<element::Type_t::f16, element::T
 
     // TODO: Add SSE2/FP16C/AVX check
 
-    const int nthr = tbb::this_task_arena::max_concurrency();
-    const size_t trange = size / nthr;
-    size_t step = trange >= 8 ? (trange / 8) * 8 : 8;
+    size_t const step = 8;
     const size_t n = size / step;
 
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, n),
-                        [&](tbb::blocked_range<size_t> range) {
-                            for (size_t i = range.begin() * step; i < range.end() * step; i += 8) {
-                                __m128i f16vec = _mm_loadu_si128((const __m128i*)&src_data[i]);     // SSE2
-                                __m256 f32vec = _mm256_cvtph_ps(f16vec);                            // FP16C
-                                _mm256_storeu_ps(&dst_data[i], f32vec);                             // AVX
-                            }
-                        });
+    for (size_t i = 0; i < n * step; i += 8) {
+        __m128i f16vec = _mm_loadu_si128((const __m128i*)&src_data[i]);     // SSE2
+        __m256 f32vec = _mm256_cvtph_ps(f16vec);                            // FP16C
+        _mm256_storeu_ps(&dst_data[i], f32vec);                             // AVX
+    }
 
     std::transform(src_data + n * step, src_data + size, dst_data + n * step,
                 [](src_type val) {

@@ -112,8 +112,9 @@ bool match(Ctx && ctx, T && val, Case && cs, Cases&&... cases) {
 namespace internal {
 namespace itt {
 namespace domains {
-    OV_ITT_DOMAIN(CC0MKLDNNPlugin); // Domain for simple scope surrounded by ifdes
+    OV_ITT_DOMAIN(CC0MKLDNNPlugin); // Domain for simple scope surrounded by ifdefs
     OV_ITT_DOMAIN(CC1MKLDNNPlugin); // Domain for switch/cases
+    OV_ITT_DOMAIN(CC2MKLDNNPlugin); // Domain for MKLDNN plugin factories
 }   // namespace domains
 }   // namespace itt
 

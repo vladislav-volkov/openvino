@@ -14,36 +14,10 @@ namespace MKLDNNPlugin {
 template<typename Key, typename T>
 class Factory;
 
-#if !defined(MKLDNN_SUBSET) || !defined(MKLDNN_FACTORY_INSTANCE)
-
-template<typename T>
-struct factory_instance {
-    constexpr static int enabled = 1;
-};
-
-#endif
-
 template<typename Key, typename T, typename ...Args>
 class Factory<Key, T(Args...)> {
     Factory(Factory const&) = delete;
     Factory& operator=(Factory const&) = delete;
-
-    template<typename Impl, int Enabled = 1>
-    class RegisterNodeImpl {
-    public:
-        RegisterNodeImpl(Factory *factory, const Key & key) {
-            factory->builders[key] = [](Args... args) -> T {
-                Impl *impl = new Impl(args...);
-                return static_cast<T>(impl);
-            };
-        }
-    };
-
-    template<typename Impl>
-    class RegisterNodeImpl<Impl, 0> {
-    public:
-        RegisterNodeImpl(Factory *, const Key &) {}
-    };
 
 public:
     using builder_t = std::function<T(Args...)>;
@@ -51,14 +25,28 @@ public:
     Factory(const std::string & name)
         : name(name) {}
 
+#ifdef MKLDNN_SUBSET
+    #define registerNode(Name, key, Impl)       \
+        MKLDNN_EXPAND(MKLDNN_CAT(registerImpl, MKLDNN_SCOPE_IS_ENABLED(MKLDNN_CAT(CC2MKLDNNPlugin_, Name)))<Impl>(key, MKLDNN_TOSTRING(Name)))
+
     template<typename Impl>
-    void registerNode(const Key & key, const char *typeName) {
+    void registerImpl0(const Key &, const char *) {
+    }
+#else
+    #define registerNode(Name, key, Impl) registerImpl1<Impl>(key, MKLDNN_TOSTRING(Name))
+#endif
+
+    template<typename Impl>
+    void registerImpl1(const Key & key, const char *typeName) {
 #ifdef MKLDNN_SUBSET_FIND
         const std::string task_name = "REG$" + name + "$" + to_string(key) + "$" + typeName;
         OV_ITT_SCOPED_TASK(MKLDNNPlugin::internal::itt::domains::CC2MKLDNNPlugin,
                            openvino::itt::handle(task_name));
 #endif
-        RegisterNodeImpl<Impl, factory_instance<Impl>::enabled>(this, key);
+        builders[key] = [](Args... args) -> T {
+            Impl *impl = new Impl(args...);
+            return static_cast<T>(impl);
+        };
     }
 
     T create(const Key & key, Args... args) {

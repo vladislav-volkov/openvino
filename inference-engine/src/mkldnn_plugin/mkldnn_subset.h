@@ -60,7 +60,8 @@ namespace MKLDNNPlugin {
 // Macros for names concatenation
 #define MKLDNN_CAT_(x, y) x ## y
 #define MKLDNN_CAT(x, y) MKLDNN_CAT_(x, y)
-#define MKLDNN_CAT3(x1, x2, x3) MKLDNN_CAT(MKLDNN_CAT(x1, x2), x3)
+#define MKLDNN_CAT3_(x, y, z) x ## y ## z
+#define MKLDNN_CAT3(x, y, z) MKLDNN_CAT3_(x, y, z)
 
 // Expand macro argument
 #define MKLDNN_EXPAND(x) x

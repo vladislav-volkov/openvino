@@ -139,7 +139,7 @@ template<template<typename...> typename Fn, typename Ctx, typename T, typename C
 bool match(char const *region, Ctx && ctx, T && val, Case && cs) {
     const bool is_matched = val == cs.value;
     if (is_matched) {
-        OV_ITT_SCOPED_TASK(MKLDNNPlugin::internal::itt::domains::CC1MKLDNNPlugin, std::string(region) + ":" + cs.name);
+        OV_ITT_SCOPED_TASK(MKLDNNPlugin::internal::itt::domains::CC1MKLDNNPlugin, std::string(region) + "$" + cs.name);
         Fn<typename Case::type>()(std::forward<Ctx>(ctx));
     }
     return is_matched;

@@ -27,7 +27,7 @@ public:
 
 #ifdef MKLDNN_SUBSET
     #define registerNode(Name, key, Impl)       \
-        MKLDNN_EXPAND(MKLDNN_CAT(registerImpl, MKLDNN_SCOPE_IS_ENABLED(MKLDNN_CAT(CC2MKLDNNPlugin_, Name)))<Impl>(key, MKLDNN_TOSTRING(Name)))
+        MKLDNN_EXPAND(MKLDNN_CAT(registerImpl, MKLDNN_SCOPE_IS_ENABLED(MKLDNN_CAT(MKLDNNPlugin_, Name)))<Impl>(key, MKLDNN_TOSTRING(Name)))
 
     template<typename Impl>
     void registerImpl0(const Key &, const char *) {
@@ -40,7 +40,7 @@ public:
     void registerImpl1(const Key & key, const char *typeName) {
 #ifdef MKLDNN_SUBSET_FIND
         const std::string task_name = "REG$" + name + "$" + to_string(key) + "$" + typeName;
-        OV_ITT_SCOPED_TASK(MKLDNNPlugin::internal::itt::domains::CC2MKLDNNPlugin,
+        OV_ITT_SCOPED_TASK(MKLDNNPlugin::internal::itt::domains::CC2_MKLDNNPlugin,
                            openvino::itt::handle(task_name));
 #endif
         builders[key] = [](Args... args) -> T {
@@ -54,7 +54,7 @@ public:
         if (builder != builders.end()) {
 #ifdef MKLDNN_SUBSET_FIND
             const std::string task_name = "CREATE$" + name + "$" + to_string(key);
-            OV_ITT_SCOPED_TASK(MKLDNNPlugin::internal::itt::domains::CC2MKLDNNPlugin,
+            OV_ITT_SCOPED_TASK(MKLDNNPlugin::internal::itt::domains::CC2_MKLDNNPlugin,
                             openvino::itt::handle(task_name));
 #endif
             return builder->second(args...);

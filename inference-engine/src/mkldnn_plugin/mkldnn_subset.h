@@ -113,9 +113,9 @@ bool match(Ctx && ctx, T && val, Case && cs, Cases&&... cases) {
 namespace internal {
 namespace itt {
 namespace domains {
-    OV_ITT_DOMAIN(CC0MKLDNNPlugin); // Domain for simple scope surrounded by ifdefs
-    OV_ITT_DOMAIN(CC1MKLDNNPlugin); // Domain for switch/cases
-    OV_ITT_DOMAIN(CC2MKLDNNPlugin); // Domain for MKLDNN plugin factories
+    OV_ITT_DOMAIN(CC0_MKLDNNPlugin); // Domain for simple scope surrounded by ifdefs
+    OV_ITT_DOMAIN(CC1_MKLDNNPlugin); // Domain for switch/cases
+    OV_ITT_DOMAIN(CC2_MKLDNNPlugin); // Domain for MKLDNN plugin factories
 }   // namespace domains
 }   // namespace itt
 
@@ -140,7 +140,7 @@ template<template<typename...> typename Fn, typename Ctx, typename T, typename C
 bool match(char const *region, Ctx && ctx, T && val, Case && cs) {
     const bool is_matched = val == cs.value;
     if (is_matched) {
-        OV_ITT_SCOPED_TASK(MKLDNNPlugin::internal::itt::domains::CC1MKLDNNPlugin, std::string(region) + "$" + cs.name);
+        OV_ITT_SCOPED_TASK(MKLDNNPlugin::internal::itt::domains::CC1_MKLDNNPlugin, std::string(region) + "$" + cs.name);
         Fn<typename Case::type>()(std::forward<Ctx>(ctx));
     }
     return is_matched;
@@ -156,7 +156,7 @@ bool match(char const *region, Ctx && ctx, T && val, Case && cs, Cases&&... case
 }   // namespace internal
 
 #define MKLDNN_SCOPE(region, ...)                                                       \
-    OV_ITT_SCOPED_TASK(MKLDNNPlugin::internal::itt::domains::CC0MKLDNNPlugin, MKLDNN_TOSTRING(region)); \
+    OV_ITT_SCOPED_TASK(MKLDNNPlugin::internal::itt::domains::CC0_MKLDNNPlugin, MKLDNN_TOSTRING(region)); \
     __VA_ARGS__
 
 #define MKLDNN_SWITCH(fn, ctx, val, ...)                                                \
@@ -197,16 +197,16 @@ bool match(char const *region, Ctx && ctx, T && val, Case && cs, Cases&&... case
 #define MKLDNN_SCOPE_1(...) __VA_ARGS__
 
 #define MKLDNN_SCOPE(region, ...)           \
-    MKLDNN_EXPAND(MKLDNN_CAT(MKLDNN_SCOPE_, MKLDNN_SCOPE_IS_ENABLED(MKLDNN_CAT(CC0MKLDNNPlugin_, region)))(__VA_ARGS__))
+    MKLDNN_EXPAND(MKLDNN_CAT(MKLDNN_SCOPE_, MKLDNN_SCOPE_IS_ENABLED(MKLDNN_CAT(MKLDNNPlugin_, region)))(__VA_ARGS__))
 
 // Switch is disabled
 #define MKLDNN_SWITCH_0(fn, ctx, val)
 
 // Switch is enabled
-#define MKLDNN_SWITCH_1(fn, ctx, val) internal::match<fn>(ctx, val, MKLDNN_CAT3(CC1MKLDNNPlugin_, fn, _cases));
+#define MKLDNN_SWITCH_1(fn, ctx, val) internal::match<fn>(ctx, val, MKLDNN_CAT3(MKLDNNPlugin_, fn, _cases));
 
 #define MKLDNN_SWITCH(fn, ctx, val, ...)         \
-    MKLDNN_EXPAND(MKLDNN_CAT(MKLDNN_SWITCH_, MKLDNN_SCOPE_IS_ENABLED(MKLDNN_CAT(CC1MKLDNNPlugin_, fn)))(fn, ctx, val))
+    MKLDNN_EXPAND(MKLDNN_CAT(MKLDNN_SWITCH_, MKLDNN_SCOPE_IS_ENABLED(MKLDNN_CAT(MKLDNNPlugin_, fn)))(fn, ctx, val))
 
 #define MKLDNN_CASE(Case, Type) internal::make_case_wrapper<Type>(Case)
 

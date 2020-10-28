@@ -3,17 +3,17 @@
 import argparse, csv
 from pathlib import Path
 
-Domain = ['CC0MKLDNNPlugin',
-          'CC1MKLDNNPlugin',
-          'CC2MKLDNNPlugin']
+Domain = ['CC0_',
+          'CC1_',
+          'CC2_']
 
 FILE_HEADER = "#pragma once\n\n"
 
 FILE_FOOTER = "\n"
 
-ENABLED_SCOPE_FMT = "#define CC0MKLDNNPlugin_%s 1\n"
-ENABLED_SWITCH_FMT = "#define CC1MKLDNNPlugin_%s 1\n#define CC1MKLDNNPlugin_%s_cases %s\n"
-ENABLED_FACTORY_INSTANCE_FMT = "#define CC2MKLDNNPlugin_%s 1\n"
+ENABLED_SCOPE_FMT = "#define %s_%s 1\n"
+ENABLED_SWITCH_FMT = "#define %s_%s 1\n#define %s_%s_cases %s\n"
+ENABLED_FACTORY_INSTANCE_FMT = "#define %s_%s 1\n"
 
 class Scope:
     def __init__(self, name):
@@ -25,8 +25,8 @@ class Scope:
     def __hash__(self):
         return hash(self.name)
 
-    def generate(self, f):
-        f.write(ENABLED_SCOPE_FMT % self.name)
+    def generate(self, f, module):
+        f.write(ENABLED_SCOPE_FMT % (module, self.name))
 
 class Switch:
     def __init__(self, name):
@@ -36,8 +36,8 @@ class Switch:
     def case(self, val):
         self.cases.add(val)
 
-    def generate(self, f):
-        f.write(ENABLED_SWITCH_FMT % (self.name, self.name, ', '.join(self.cases)))
+    def generate(self, f, module):
+        f.write(ENABLED_SWITCH_FMT % (module, self.name, module, self.name, ', '.join(self.cases)))
 
 class Factory:
     def __init__(self, name):
@@ -51,17 +51,21 @@ class Factory:
     def create(self, id):
         self.created.add(id)
 
-    def generate(self, f):
+    def generate(self, f, module):
         for id in self.created:
             r = self.registered.get(id)
-            f.write(ENABLED_FACTORY_INSTANCE_FMT % r)
+            if r:
+                f.write(ENABLED_FACTORY_INSTANCE_FMT % (module, r))
 
-class Stat:
-    def __init__(self, files):
+class Module:
+    def __init__(self, name):
+        self.name = name
         self.scopes = set()
         self.switches = {}
         self.factories = {}
-        self.read(files)
+
+    def scope(self, name):
+        self.scopes.add(Scope(name))
 
     def factory(self, name):
         if name not in self.factories:
@@ -73,6 +77,32 @@ class Stat:
             self.switches[name] = Switch(name)
         return self.switches.get(name)
 
+    def generate(self, f):
+        for scope in self.scopes:
+            scope.generate(f, self.name)
+        if self.scopes:
+            f.write("\n")
+
+        for _, switch in self.switches.items():
+            switch.generate(f, self.name)
+        if self.switches:
+            f.write("\n")
+
+        for _, factory in self.factories.items():
+            factory.generate(f, self.name)
+        if self.factories:
+            f.write("\n")
+
+class Stat:
+    def __init__(self, files):
+        self.modules = {}
+        self.read(files)
+
+    def module(self, name):
+        if name not in self.modules:
+            self.modules[name] = Module(name)
+        return self.modules.get(name)
+
     def read(self, files):
         for stat in files:
             with open(stat) as f:
@@ -80,40 +110,31 @@ class Stat:
                 rows = list(reader)
                 if rows:
                     # Scopes
-                    scopes = list(filter(lambda row: row[0] == Domain[0], rows))
+                    scopes = list(filter(lambda row: row[0].startswith(Domain[0]), rows))
                     for row in scopes:
-                        self.scopes.add(Scope(row[1]))
+                        moduleName = row[0][len(Domain[0]):]
+                        self.module(moduleName).scope(row[1])
 
                     # Switches
-                    switches = list(map(lambda row: row[1].strip().split('$'),
-                                        filter(lambda row: row[0] == Domain[1], rows)))
+                    switches = list(map(lambda row: [row[0][len(Domain[1]):]] + row[1].strip().split('$'),
+                                        filter(lambda row: row[0].startswith(Domain[1]), rows)))
                     for switch in switches:
-                        self.switch(switch[0]).case(switch[1])
+                        self.module(switch[0]).switch(switch[1]).case(switch[2])
 
                     # Factories
-                    factories = list(map(lambda row: row[1].strip().split('$'),
-                                        filter(lambda row: row[0] == Domain[2], rows)))
-                    for reg in list(filter(lambda row: row[0] == 'REG', factories)):
-                        self.factory(reg[1]).register(reg[2], reg[3])
-                    for cre in list(filter(lambda row: row[0] == 'CREATE', factories)):
-                        self.factory(cre[1]).create(cre[2])
+                    factories = list(map(lambda row: [row[0][len(Domain[2]):]] + row[1].strip().split('$'),
+                                        filter(lambda row: row[0].startswith(Domain[2]), rows)))
+                    for reg in list(filter(lambda row: row[1] == 'REG', factories)):
+                        self.module(reg[0]).factory(reg[2]).register(reg[3], reg[4])
+                    for cre in list(filter(lambda row: row[1] == 'CREATE', factories)):
+                        self.module(cre[0]).factory(cre[2]).create(cre[3])
 
     def generate(self, out):
         with open(out, 'w') as f:
             f.write(FILE_HEADER)
 
-            for scope in self.scopes:
-                scope.generate(f)
-            if self.scopes:
-                f.write("\n")
-
-            for _, switch in self.switches.items():
-                switch.generate(f)
-            if self.switches:
-                f.write("\n")
-
-            for _, factory in self.factories.items():
-                factory.generate(f)
+            for _, module in self.modules.items():
+                module.generate(f)
 
             f.write(FILE_FOOTER)
 

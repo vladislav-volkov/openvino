@@ -36,4 +36,10 @@ if (ENABLE_SPEECH_DEMO)
     add_definitions(-DENABLE_SPEECH_DEMO)
 endif()
 
+if(${ENABLE_SUBSET} STREQUAL "ANALYZE")
+    add_definitions(-DMKLDNN_SUBSET_FIND)
+elseif(${ENABLE_SUBSET} STREQUAL "ON")
+    add_definitions(-DMKLDNN_SUBSET)
+endif()
+
 print_enabled_features()

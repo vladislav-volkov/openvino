@@ -5,6 +5,7 @@
 [submodule "inference-engine/thirdparty/mkl-dnn"]
 	path = inference-engine/thirdparty/mkl-dnn
 	url = https://github.com/openvinotoolkit/oneDNN.git
+	branch = feature/vvolkov/conditional-compilation
 	ignore = dirty
 [submodule "inference-engine/tests/ie_test_utils/common_test_utils/gtest"]
 	path = inference-engine/tests/ie_test_utils/common_test_utils/gtest

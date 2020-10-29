@@ -159,6 +159,14 @@ else()
     set(MKLDNN_THR MKLDNN_THR_SEQ)
 endif()
 
+if(${ENABLE_SUBSET} STREQUAL "ON")
+    if(MSVC)
+        add_definitions(/FI"${SUBSET_DEFS}")
+    else()
+        add_definitions(-include "${SUBSET_DEFS}")
+    endif()
+endif()
+
 # create plugin
 
 ie_add_plugin(NAME ${TARGET_NAME}

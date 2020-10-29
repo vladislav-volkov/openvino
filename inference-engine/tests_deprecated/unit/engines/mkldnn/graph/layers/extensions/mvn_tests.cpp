@@ -528,10 +528,7 @@ protected:
             auto manager = std::make_shared<MKLDNNPlugin::MKLDNNExtensionManager>();
             {
                 auto defaultExt = std::make_shared<Cpu::MKLDNNExtensions>();
-                defaultExt->AddExt("FakeLayer_MVN",
-                    [](const CNNLayer* layer) -> InferenceEngine::ILayerImplFactory* {
-                                    return new Cpu::ImplFactory<FakeLayerImpl_MVN>(layer);
-                                });
+                defaultExt->layersFactory.registerNode(FakeLayer_MVN, "FakeLayer_MVN", Cpu::ImplFactory<FakeLayerImpl_MVN>);
                 manager->AddExtension(defaultExt);
             }
             graph.CreateGraph(network, manager);

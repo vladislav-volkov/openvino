@@ -50,3 +50,6 @@ ie_option (ENABLE_PROFILING_ITT "Build with ITT tracing. Optionally configure pr
 ie_option (ENABLE_DOCS "build docs using Doxygen" OFF)
 
 ie_dependent_option (ENABLE_FASTER_BUILD "Enable build features (PCH, UNITY) to speed up build time" OFF "CMAKE_VERSION VERSION_GREATER_EQUAL 3.16" OFF)
+
+ie_option_enum(ENABLE_SUBSET "Enable the IE subset analysis or usage" OFF
+               ALLOWED_VALUES ON OFF ANALYZE)

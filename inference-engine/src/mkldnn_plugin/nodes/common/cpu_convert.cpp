@@ -35,7 +35,7 @@ struct ConvertContext {
 };
 
 template<typename T>
-struct Convert {
+struct ConvertPrecision {
     using src_t = typename std::tuple_element<0, T>::type;
     using dst_t = typename std::tuple_element<1, T>::type;
 
@@ -57,7 +57,7 @@ void cpu_convert(void *srcPtr, void *dstPtr, Precision srcPrc, Precision dstPrc,
 
     ConvertContext ctx = { srcPtr, dstPtr, size, false };
 
-    MKLDNN_SWITCH(Convert, ctx, std::tie(srcPrc, dstPrc),
+    MKLDNN_SWITCH(ConvertPrecision, ctx, std::tie(srcPrc, dstPrc),
     MKLDNN_CNV(U8, I8),    MKLDNN_CNV(U8, U16),   MKLDNN_CNV(U8, I16),   MKLDNN_CNV(U8, I32),
     MKLDNN_CNV(U8, U64),   MKLDNN_CNV(U8, I64),   MKLDNN_CNV(U8, FP32),  MKLDNN_CNV(U8, BOOL),
     MKLDNN_CNV(I8, U8),    MKLDNN_CNV(I8, U16),   MKLDNN_CNV(I8, I16),   MKLDNN_CNV(I8, I32),

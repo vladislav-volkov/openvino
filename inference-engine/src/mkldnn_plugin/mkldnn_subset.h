@@ -160,16 +160,16 @@ bool match(char const *region, Ctx && ctx, T && val, Case && cs, Cases&&... case
     __VA_ARGS__
 
 #define MKLDNN_SWITCH(fn, ctx, val, ...)                                                \
-    internal::match<fn>(MKLDNN_TOSTRING(fn), ctx, val, __VA_ARGS__);
+    MKLDNNPlugin::internal::match<fn>(MKLDNN_TOSTRING(fn), ctx, val, __VA_ARGS__);
 
 #define MKLDNN_LBR (
 #define MKLDNN_RBR )
 
 #define MKLDNN_CASE(Case, Type)                                                         \
-    internal::make_case_wrapper<Type>(Case, MKLDNN_TOSTRING(MKLDNN_CASE MKLDNN_LBR Case, Type MKLDNN_RBR))
+    MKLDNNPlugin::internal::make_case_wrapper<Type>(Case, MKLDNN_TOSTRING(MKLDNN_CASE MKLDNN_LBR Case, Type MKLDNN_RBR))
 
 #define MKLDNN_CASE2(Case1, Case2, Type1, Type2)                                        \
-    internal::make_case_wrapper<std::tuple<Type1, Type2>>(                              \
+    MKLDNNPlugin::internal::make_case_wrapper<std::tuple<Type1, Type2>>(                \
         std::make_tuple(Case1, Case2),                                                  \
         MKLDNN_TOSTRING(MKLDNN_CASE2 MKLDNN_LBR Case1, Case2, Type1, Type2 MKLDNN_RBR))
 
@@ -203,25 +203,25 @@ bool match(char const *region, Ctx && ctx, T && val, Case && cs, Cases&&... case
 #define MKLDNN_SWITCH_0(fn, ctx, val)
 
 // Switch is enabled
-#define MKLDNN_SWITCH_1(fn, ctx, val) internal::match<fn>(ctx, val, MKLDNN_CAT3(MKLDNNPlugin_, fn, _cases));
+#define MKLDNN_SWITCH_1(fn, ctx, val) MKLDNNPlugin::internal::match<fn>(ctx, val, MKLDNN_CAT3(MKLDNNPlugin_, fn, _cases));
 
 #define MKLDNN_SWITCH(fn, ctx, val, ...)         \
     MKLDNN_EXPAND(MKLDNN_CAT(MKLDNN_SWITCH_, MKLDNN_SCOPE_IS_ENABLED(MKLDNN_CAT(MKLDNNPlugin_, fn)))(fn, ctx, val))
 
-#define MKLDNN_CASE(Case, Type) internal::make_case_wrapper<Type>(Case)
+#define MKLDNN_CASE(Case, Type) MKLDNNPlugin::internal::make_case_wrapper<Type>(Case)
 
-#define MKLDNN_CASE2(Case1, Case2, Type1, Type2) internal::make_case_wrapper<std::tuple<Type1, Type2>>(std::make_tuple(Case1, Case2))
+#define MKLDNN_CASE2(Case1, Case2, Type1, Type2) MKLDNNPlugin::internal::make_case_wrapper<std::tuple<Type1, Type2>>(std::make_tuple(Case1, Case2))
 
 #else
 
 #define MKLDNN_SCOPE(region, ...) __VA_ARGS__
 
 #define MKLDNN_SWITCH(fn, ctx, val, ...)    \
-    internal::match<fn>(ctx, val, __VA_ARGS__);
+    MKLDNNPlugin::internal::match<fn>(ctx, val, __VA_ARGS__);
 
-#define MKLDNN_CASE(Case, Type) internal::make_case_wrapper<Type>(Case)
+#define MKLDNN_CASE(Case, Type) MKLDNNPlugin::internal::make_case_wrapper<Type>(Case)
 
-#define MKLDNN_CASE2(Case1, Case2, Type1, Type2) internal::make_case_wrapper<std::tuple<Type1, Type2>>(std::make_tuple(Case1, Case2))
+#define MKLDNN_CASE2(Case1, Case2, Type1, Type2) MKLDNNPlugin::internal::make_case_wrapper<std::tuple<Type1, Type2>>(std::make_tuple(Case1, Case2))
 
 #endif
 

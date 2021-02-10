@@ -212,6 +212,13 @@ void MKLDNNEdge::externalAllocate(MKLDNNWeightsSharing::Ptr weightsCache) {
     }
 }
 
+void MKLDNNEdge::reuse(InferenceEngine::Blob::Ptr blob) {
+    if (status != Status::NeedAllocation)
+        return;
+    memoryFromBlob = blob;
+    allocate(blob->cbuffer());
+}
+
 void MKLDNNEdge::changeStatus(MKLDNNEdge::Status state) {
     if (state == Status::NotAllocated) {
         THROW_IE_EXCEPTION << "Incorrect behaviour! Use method sharedMemFrom()";

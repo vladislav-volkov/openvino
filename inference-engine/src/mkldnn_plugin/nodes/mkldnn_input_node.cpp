@@ -32,10 +32,12 @@ MKLDNNInputNode::MKLDNNInputNode(const InferenceEngine::CNNLayerPtr& layer, cons
     }
 }
 
-void MKLDNNInputNode::cloneIfRequired(const InferenceEngine::Blob::Ptr & blob, const InferenceEngine::TensorDesc & tensorDesc) {
+void MKLDNNInputNode::cloneIfRequired(const InferenceEngine::Blob::Ptr & blob, const InferenceEngine::TensorDesc & outTensorDesc) {
     ieConstBlob = blob;
 
-    auto memDesc = MKLDNNMemoryDesc(tensorDesc);
+    const InferenceEngine::TensorDesc& td = {blob->getTensorDesc().getPrecision(), outTensorDesc.getDims(), outTensorDesc.getLayout()};
+
+    auto memDesc = MKLDNNMemoryDesc(td);
 
     if (weightCache) {
         char ptr[32];
@@ -55,7 +57,7 @@ void MKLDNNInputNode::cloneIfRequired(const InferenceEngine::Blob::Ptr & blob, c
             return _ptr;
         };
 
-        constBlob = weightCache->findOrCreate(key, cloneBlob);
+        constBlob = *weightCache->findOrCreate(key, cloneBlob);
     } else {
         constBlob = MKLDNNMemoryPtr(new MKLDNNMemory(getEngine()));
         constBlob->Create(memDesc, blob->buffer());
